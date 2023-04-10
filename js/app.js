@@ -13,6 +13,11 @@ function displayJson(json, parentElement) {
             nodeElement.append(keyElement);
 
             displayJson(value, nodeElement);
+
+            // Make the key clickable
+            keyElement.click(function() {
+                $(this).siblings().toggle();
+            });
         }
     } else {
         const valueElement = $("<span></span>").text(JSON.stringify(json));
@@ -75,6 +80,7 @@ document.getElementById("fileInput1").addEventListener("change", function (event
         reader.onload = function (e) {
             const jsonData = JSON.parse(e.target.result);
             displayJson(jsonData, $('#json-viewer'));
+            $("#drop-zone1").text("File loaded: " + file.name);
         };
         reader.readAsText(file);
     }
@@ -87,6 +93,7 @@ document.getElementById("fileInput2").addEventListener("change", function (event
         reader.onload = function (e) {
             const jsonData = JSON.parse(e.target.result);
             displayJson(jsonData, $('#json-viewer'));
+            $("#drop-zone2").text("File loaded: " + file.name);
         };
         reader.readAsText(file);
     }
