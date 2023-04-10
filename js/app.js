@@ -1,60 +1,52 @@
-const jsonInput = document.getElementById('json-input');
-const loadJsonButton = document.getElementById('load-json');
-const jsonViewer = document.getElementById('json-viewer');
-const saveJsonButton = document.getElementById('save-json');
-const mergeJsonButton = document.getElementById('merge-json');
-
-let jsonData = null;
-
-loadJsonButton.addEventListener('click', () => {
-    try {
-        jsonData = JSON.parse(jsonInput.value);
-        jsonViewer.textContent = JSON.stringify(jsonData, null, 2);
-    } catch (error) {
-        alert('Invalid JSON');
-    }
-});
-
-saveJsonButton.addEventListener('click', () => {
-    if (jsonData) {
-        const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'data.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-});
-
-mergeJsonButton.addEventListener('click', () => {
-    try {
-        const newJsonData = JSON.parse(jsonInput.value);
-
-        if (!jsonData) {
-            jsonData = newJsonData;
+$(document).ready(function () {
+    let jsonData = null;
+  
+    function displayJson(json) {
+        parentElement = parentElement || $("#json-viewer");
+        parentElement.empty();
+    
+        if (typeof json === "object" && json !== null) {
+          for (const key in json) {
+            const value = json[key];
+            const nodeElement = $("<div class='json-node'></div>");
+            parentElement.append(nodeElement);
+    
+            const keyElement = $("<span class='json-key'></span>").text(key + ": ");
+            nodeElement.append(keyElement);
+    
+            displayJson(value, nodeElement);
+          }
         } else {
-            jsonData = mergeObjects(jsonData, newJsonData);
-        }
-
-        jsonViewer.textContent = JSON.stringify(jsonData, null, 2);
-    } catch (error) {
-        alert('Invalid JSON');
-    }
-});
-
-function mergeObjects(obj1, obj2) {
-    const result = { ...obj1 };
-
-    for (const key in obj2) {
-        if (obj2.hasOwnProperty(key)) {
-            if (typeof obj2[key] === 'object' && !Array.isArray(obj2[key])) {
-                result[key] = mergeObjects(result[key], obj2[key]);
-            } else {
-                result[key] = obj2[key];
-            }
+          const valueElement = $("<span></span>").text(JSON.stringify(json));
+          parentElement.append(valueElement);
         }
     }
-
-    return result;
-}
+  
+    function mergeJson(json1, json2) {
+      // Merge the two JSON objects
+    }
+  
+    $("#load-json").click(function () {
+      let jsonInput1 = $("#json-input1").val();
+      try {
+        jsonData = JSON.parse(jsonInput1);
+        displayJson(jsonData);
+      } catch (error) {
+        alert("Invalid JSON data");
+      }
+    });
+  
+    $("#merge-json").click(function () {
+      let jsonInput1 = $("#json-input1").val();
+      let jsonInput2 = $("#json-input2").val();
+      try {
+        let jsonData1 = JSON.parse(jsonInput1);
+        let jsonData2 = JSON.parse(jsonInput2);
+        jsonData = mergeJson(jsonData1, jsonData2);
+        displayJson(jsonData);
+      } catch (error) {
+        alert("Invalid JSON data");
+      }
+    });
+  });
+  
