@@ -1,24 +1,51 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <title>JSON Viewer and Editor</title>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <style>
-    .json-key {
-      font-weight: bold;
-    }
-    .json-node {
-      margin-left: 20px;
-    }
-  </style>
+    <title>JSON Viewer and Editor</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .json-key {
+            font-weight: bold;
+        }
+
+        .json-node {
+            margin-left: 20px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone:hover {
+            border-color: #999;
+            background-color: #f0f0f0;
+        }
+    </style>
 </head>
+
 <body>
-  <h1>JSON Viewer and Editor</h1>
-  <textarea id="json-input1" placeholder="Paste JSON data here" rows="10" cols="50"></textarea>
-  <textarea id="json-input2" placeholder="Paste second JSON data here for merging" rows="10" cols="50"></textarea>
-  <button id="load-json">Load JSON</button>
-  <button id="merge-json">Merge JSON</button>
-  <div id="json-viewer"></div>
-  <script src="js/app.js"></script>
+    <h1>JSON Viewer and Editor</h1>
+    <div class="drop-zone" id="drop-zone1">
+        Drag and drop JSON file here or click to upload
+        <input type="file" id="fileInput1" style="display:none">
+        <button onclick="clickToUpload('fileInput1')">Load JSON file 1</button>
+        <pre id="jsonOutput1"></pre>
+    </div>
+    <div class="drop-zone" id="drop-zone2">
+        Drag and drop second JSON file here for merging or click to upload
+        <input type="file" id="fileInput2" style="display:none">
+        <button onclick="clickToUpload('fileInput2')">Load JSON file 2</button>
+        <pre id="jsonOutput2"></pre>
+    </div>
+    <button id="load-json1">Show JSON 1</button>
+    <button id="load-json2">Show JSON 2</button>
+    <button id="merge-json">Merge JSON</button>
+    <div id="json-viewer"></div>
+    <script src="js/app.js"></script>
 </body>
+
 </html>
