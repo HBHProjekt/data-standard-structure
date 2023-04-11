@@ -2,50 +2,64 @@
 <html>
 
 <head>
-    <title>JSON Viewer and Editor</title>
+    <title>DSS</title>
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        .json-key {
-            font-weight: bold;
-            display: inline;
-        }
-
-        .json-node {
-            margin-left: 20px;
-        }
-
-        .drop-zone {
-            border: 2px dashed #ccc;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .drop-zone:hover {
-            border-color: #999;
-            background-color: #f0f0f0;
-        }
-    </style>
 </head>
 
 <body>
-    <h1>JSON Viewer and Editor</h1>
-    <div class="drop-zone" id="drop-zone1">
-        Drag and drop JSON file here or click to upload
-        <input type="file" id="fileInput1" style="display:none">
-        <button onclick="clickToUpload('fileInput1')">Load JSON file 1</button>
-        <pre id="jsonOutput1"></pre>
+    <h1>Data standard structure viewer and editor</h1>
+
+    <div class="container">
+        <div class="left-side">
+            <div class="drop-zone" id="drop-zone1">
+                Drag and drop JSON file here or click to upload
+                <input type="file" id="fileInput1" style="display:none" data-json="">
+                <button onclick="clickToUpload('fileInput1')">Load JSON file 1</button>
+                <pre id="jsonOutput1"></pre>
+                <div class="spinner" style="display:none;"></div>
+
+            </div>
+
+            <div class="drop-zone" id="drop-zone2">
+                Drag and drop second JSON file here for merging or click to upload
+                <input type="file" id="fileInput2" style="display:none" data-json="">
+                <button onclick="clickToUpload('fileInput2')">Load JSON file 2</button>
+                <pre id="jsonOutput2"></pre>
+                <div class="spinner" style="display:none;"></div>
+
+            </div>
+
+            <div>
+                <h2>Load JSON files</h2>
+                <button id="load-json1">Show JSON 1</button>
+                <button id="load-json2">Show JSON 2</button>
+                <button id="load-json-merged">Show merged JSON</button>
+                <input type="file" id="fileInputMerged" style="display:none" data-json="">
+            </div>
+
+            <div>
+                <h2>Merge JSON files</h2>
+                <button id="merge-json">Merge JSONs</button>
+            </div>
+
+            <div>
+                <h2>Check JSON files</h2>
+                <button id="check-json1">Check JSON 1</button>
+                <button id="check-json2">Check JSON 2</button>
+                <button id="check-json-merged">Check merged JSON</button>
+            </div>
+        </div>
+
+        <div class="right-side">
+            <h2>Errors Viewer</h2>
+            <div id="errors-viewer"></div>
+
+            <h2>DSS Viewer</h2>                        
+            <div id="json-viewer"></div>
+        </div>
     </div>
-    <div class="drop-zone" id="drop-zone2">
-        Drag and drop second JSON file here for merging or click to upload
-        <input type="file" id="fileInput2" style="display:none">
-        <button onclick="clickToUpload('fileInput2')">Load JSON file 2</button>
-        <pre id="jsonOutput2"></pre>
-    </div>
-    <button id="load-json1">Show JSON 1</button>
-    <button id="load-json2">Show JSON 2</button>
-    <button id="merge-json">Merge JSON</button>
-    <div id="json-viewer"></div>
+
     <script src="js/app.js"></script>
 </body>
 
