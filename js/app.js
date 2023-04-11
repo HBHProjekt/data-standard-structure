@@ -11,7 +11,7 @@ function displayJson(json, parentElement, depth = 0) {
             const buttonsContainer = $("<div class='buttons-container'></div>");
             parentElement.append(buttonsContainer);
 
-            const selectAllButton = $("<button></button>").text("Select All").addClass("select-all-btn");
+            const selectAllButton = $("<button></button>").text("View All").addClass("select-all-btn");
             const filterOutAllButton = $("<button></button>").text("Filter Out All").addClass("filter-out-all-btn");
             buttonsContainer.append(selectAllButton, filterOutAllButton);
 
@@ -276,6 +276,7 @@ function clickToUpload(inputId, dropZoneId) {
 
 document.getElementById("fileInput1").addEventListener("change", function (event) {
     const spinner = document.querySelector("#drop-zone1 .spinner");
+    const button = document.getElementById('load-json1');
 
     if (event.target.files.length === 0) {
         spinner.style.display = "none";
@@ -289,21 +290,34 @@ document.getElementById("fileInput1").addEventListener("change", function (event
             displayJson(jsonData, $('#json-viewer'));
             $("#drop-zone1").text("File loaded: " + file.name);
             jsonInput1.dataset.json = JSON.stringify(jsonData);
+
+            if (jsonInput1.dataset.json != '')
+            {
+                button.classList.remove('disabled');
+                button.disabled = false;
+            }
         };
         reader.readAsText(file);
-    }
+    }  
     
+
+    if (jsonInput1.dataset.json === '') {
+        button.classList.add('disabled');
+        button.disabled = true;
+    }
+        
     spinner.style.display = "none";
 });
 
 document.getElementById("fileInput2").addEventListener("change", function (event) {
     const spinner = document.querySelector("#drop-zone2 .spinner");
+    const button = document.getElementById('load-json2');
     
 
     if (event.target.files.length === 0) {
         spinner.style.display = "none";
     }
-    
+
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
@@ -312,8 +326,19 @@ document.getElementById("fileInput2").addEventListener("change", function (event
             displayJson(jsonData, $('#json-viewer'));
             $("#drop-zone2").text("File loaded: " + file.name);
             jsonInput2.dataset.json = JSON.stringify(jsonData);
+
+            if (jsonInput2.dataset.json != '')
+            {
+                button.classList.remove('disabled');
+                button.disabled = false;
+            }
         };
         reader.readAsText(file);
+    }
+
+    if (jsonInput2.dataset.json === '') {
+        button.classList.add('disabled');
+        button.disabled = true;
     }
     
     spinner.style.display = "none";
@@ -352,6 +377,16 @@ $('#merge-json').click(function () {
         }
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
+    }
+
+    const button = document.getElementById('load-json-merged');
+
+    if (fileInputMerged.dataset.json === '') {
+        button.classList.add('disabled');
+        button.disabled = true;
+    } else {
+        button.classList.remove('disabled');
+        button.disabled = false;
     }
 
 });
