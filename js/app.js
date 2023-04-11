@@ -117,6 +117,29 @@ function mergeJson(json1, json2) {
     return json2;
 }
 
+function downloadJsonFile(content, fileName) {
+    const data = new Blob([content], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(data);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+$('#download-merge').click(function () {
+    try {
+        const jsonData = JSON.parse(fileInputMerged.dataset.json);
+        const jsonContent = JSON.stringify(jsonData, null, 2);
+        downloadJsonFile(jsonContent, "merged.json");
+    } catch (error) {
+        alert('Invalid JSON data: ' + error.message);
+    }
+});
+
+
 
 function checkJsonValidity(json) {
     const guids = new Set();
@@ -233,15 +256,31 @@ dropZone2.addEventListener("drop", function (event) {
     $("#drop-zone2").text("File loaded: " + file.name);
     spinner.style.display = "none";
 });
+
 dropZone2.addEventListener("click", function () {
     const spinner = document.querySelector("#drop-zone2 .spinner");
     spinner.style.display = "block";
     jsonInput2.click();
 });
 
+function clickToUpload(inputId, dropZoneId) {
+    const fileInput = document.getElementById(inputId);
+    //get spinner based on dropzone id
+    const dropZone = document.getElementById(dropZoneId);
+    const spinner = dropZone.querySelector(".spinner");
+
+    spinner.style.display = "block";
+    fileInput.click();
+}
+
 
 document.getElementById("fileInput1").addEventListener("change", function (event) {
     const spinner = document.querySelector("#drop-zone1 .spinner");
+
+    if (event.target.files.length === 0) {
+        spinner.style.display = "none";
+    }
+
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
@@ -250,14 +289,21 @@ document.getElementById("fileInput1").addEventListener("change", function (event
             displayJson(jsonData, $('#json-viewer'));
             $("#drop-zone1").text("File loaded: " + file.name);
             jsonInput1.dataset.json = JSON.stringify(jsonData);
-            spinner.style.display = "none";
         };
         reader.readAsText(file);
     }
+    
+    spinner.style.display = "none";
 });
 
 document.getElementById("fileInput2").addEventListener("change", function (event) {
     const spinner = document.querySelector("#drop-zone2 .spinner");
+    
+
+    if (event.target.files.length === 0) {
+        spinner.style.display = "none";
+    }
+    
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
@@ -266,10 +312,11 @@ document.getElementById("fileInput2").addEventListener("change", function (event
             displayJson(jsonData, $('#json-viewer'));
             $("#drop-zone2").text("File loaded: " + file.name);
             jsonInput2.dataset.json = JSON.stringify(jsonData);
-            spinner.style.display = "none";
         };
         reader.readAsText(file);
     }
+    
+    spinner.style.display = "none";
 });
 
 $('#load-json1').click(function () {
