@@ -1,0 +1,11 @@
+{
+    "groupsOfProperties": "GroupsOfProperties",
+    "property": "Properties",
+    "customEnum": "CustomEnums",
+    "geometricalType": "GeometricalTypes",
+    "color": "Colors",
+    "precision": "GraphicalPrecisions",
+    "properties": "Properties",
+    "ifcType": "IfcTypes",
+    "unit": "Units"
+}

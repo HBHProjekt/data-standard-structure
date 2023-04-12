@@ -139,3 +139,36 @@ button.filter-btn.filtered-out {
         transform: rotate(360deg);
     }
 }
+
+.modified-value {
+    color: #f00; /* Change to your desired color */
+}
+
+.hover-bubble {
+    position: absolute;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 14px;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.hover-bubble table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.hover-bubble .key {
+    font-weight: bold;
+    padding-right: 8px;
+}
+
+.hover-bubble .value {
+    color: #555;
+}
+
+.hover-bubble td {
+    padding: 2px 0;
+}

@@ -14,8 +14,8 @@
         <div class="left-side">
             <div class="container-dropZone">
                 <div class="drop-zone" id="drop-zone1">
-                    Drag and drop JSON file here or
-                    <input type="file" id="fileInput1" style="display:none" data-json="">
+                    <span id="drop-zone1-text">Drag and drop JSON file here or</span>
+                    <input type="file" id="fileInput1" style="display:none" dataset="">
                     <pre id="jsonOutput1"></pre>
                     <div class="spinner" style="display:none;"></div>
                 </div>
@@ -24,31 +24,33 @@
             
             <div class="container-dropZone">
                 <div class="drop-zone" id="drop-zone2">
-                    Drag and drop second JSON file here for merging or
-                    <input type="file" id="fileInput2" style="display:none" data-json="">
+                    <span id="drop-zone2-text">Drag and drop second JSON file here for merging or</span>
+                    <input type="file" id="fileInput2" style="display:none" dataset="">
                     <pre id="jsonOutput2"></pre>
                     <div class="spinner" style="display:none;"></div>
                 </div>
                 <button onclick="clickToUpload('fileInput2', 'drop-zone2')">Load JSON file 2</button>
             </div>
-            
-            
-            
-
-
 
             <div>
                 <h2>Merge JSON files</h2>
-                <button id="merge-json">Merge JSONs</button>
+                <button id="merge-json" class="disabled">Merge JSONs</button>
                 <input type="file" id="fileInputMerged" style="display:none" data-json="">
-                <button id="download-merge">Download merged JSON</button>
             </div>
 
             <div>
                 <h2>Check JSON files</h2>
-                <button id="check-json1">Check JSON 1</button>
-                <button id="check-json2">Check JSON 2</button>
-                <button id="check-json-merged">Check merged JSON</button>
+                <button id="check-json1" class="disabled">Check JSON 1</button>
+                <button id="check-json2" class="disabled">Check JSON 2</button>
+                <button id="check-json-merged" class="disabled">Check merged JSON</button>
+            </div>
+
+            <div>
+                <h2>Download files</h2>
+                <button id="download-json1" class="disabled">Download JSON 1</button>
+                <button id="download-json2" class="disabled">Download JSON 2</button>
+                <button id="download-merge" class="disabled">Download merged JSON</button>
+                <button id="download-changes">Download change file JSON</button>
             </div>
         </div>
 
@@ -62,6 +64,8 @@
                 <button id="load-json2" class="disabled">Show JSON 2</button>
                 <button id="load-json-merged" class="disabled">Show merged JSON</button>
             </div>
+            <h3>Filter</h3>
+            <div id="dss-filter"></div>
             <div id="json-viewer"></div>
         </div>
     </div>
