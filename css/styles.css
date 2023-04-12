@@ -3,6 +3,9 @@ body {
     line-height: 1.6;
     color: #4a4a4a;
     font-size: 16px;
+    position: relative;
+    margin: 0;
+    padding: 0;
 }
 
 h1, h2 {
@@ -116,14 +119,29 @@ button.filter-btn.filtered-out {
     width: 45%;
 }
 
+
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
 .spinner {
-    border: 4px solid #f3f3f3;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    margin: -25px 0 0 -25px;
+    border: 4px solid transparent;
+    border-top-color: #fff;
     border-radius: 50%;
-    border-top: 4px solid #3498db;
-    width: 30px;
-    height: 30px;
-    animation: spin 2s linear infinite;
-    margin: 0 auto;
+    animation: spin 1s linear infinite;
 }
 
 .disabled {
@@ -138,6 +156,24 @@ button.filter-btn.filtered-out {
     100% {
         transform: rotate(360deg);
     }
+}
+
+.progress-bar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 20px;
+    margin: 30px 0 0 -100px;
+    background-color: #555;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    width: 0;
+    background-color: #fff;
 }
 
 .modified-value {

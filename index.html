@@ -7,7 +7,14 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
-<body>
+<body>    
+    <div id="overlay">
+        <div class="spinner"></div>
+        <div class="progress-bar">
+            <div class="progress-bar-inner"></div>
+        </div>
+    </div>
+
     <h1>Data standard structure viewer and editor</h1>
 
     <div class="container">
@@ -17,7 +24,6 @@
                     <span id="drop-zone1-text">Drag and drop JSON file here or</span>
                     <input type="file" id="fileInput1" style="display:none" dataset="">
                     <pre id="jsonOutput1"></pre>
-                    <div class="spinner" style="display:none;"></div>
                 </div>
                 <button onclick="clickToUpload('fileInput1', 'drop-zone1')">Load JSON file 1</button>
             </div>
@@ -27,7 +33,6 @@
                     <span id="drop-zone2-text">Drag and drop second JSON file here for merging or</span>
                     <input type="file" id="fileInput2" style="display:none" dataset="">
                     <pre id="jsonOutput2"></pre>
-                    <div class="spinner" style="display:none;"></div>
                 </div>
                 <button onclick="clickToUpload('fileInput2', 'drop-zone2')">Load JSON file 2</button>
             </div>

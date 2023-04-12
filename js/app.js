@@ -31,6 +31,7 @@ fetch('../structure/structure.json')
 let resourceJsonData = null;
 const changedValues = new Set();
 let ctrlKeyPressed = false;
+
 $(document).keydown(function (event) {
     if (event.ctrlKey) {
         ctrlKeyPressed = true;
@@ -42,6 +43,22 @@ $(document).keyup(function (event) {
         ctrlKeyPressed = false;
     }
 });
+
+//spinner
+function showLoadingSpinner() {
+    const overlay = document.getElementById('overlay');
+    overlay.style.display = 'block';
+}
+
+function hideLoadingSpinner() {
+    const overlay = document.getElementById('overlay');
+    overlay.style.display = 'none';
+}
+
+function updateProgressBar(progress) {
+    const progressBarInner = document.querySelector('.progress-bar-inner');
+    progressBarInner.style.width = progress + '%';
+}
 
 function displayJson(origin, json, parentElement, originalJson, keyChain = [], depth = 0) {
     parentElement = parentElement || $("#json-viewer");
@@ -225,7 +242,7 @@ function displayJson(origin, json, parentElement, originalJson, keyChain = [], d
                 const guid = json; // Assuming value is the guid
                 if (isGuid(guid)) {
 
-                    const formattedData = createHoverBubble(originalJson, key, guid);
+                    const formattedData = createHoverBubble(JSON.parse(JSON.stringify(originalJson)), key, guid);
                     const bubble = $('<div class="hover-bubble"></div>').html(formattedData);
                     $('body').append(bubble);
                     bubble.hide();
@@ -385,6 +402,7 @@ function updateOriginalJson(keyChain, parsedValue, originalJson) {
 
 $('#load-json1').click(function () {
     try {
+        showLoadingSpinner();
         const jsonData = JSON.parse(jsonInput1.dataset.json);
 
         if (resourceJsonData !== null) {
@@ -392,38 +410,49 @@ $('#load-json1').click(function () {
         }
         resourceJsonData = jsonInput1;
 
-        displayJson("json1", jsonData, $('#json-viewer'), jsonData, []);
+        displayJson("json1", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
+    }
+     finally {
+        hideLoadingSpinner();
     }
 });
 
 $('#load-json2').click(function () {
     try {
+        showLoadingSpinner();
         const jsonData = JSON.parse(jsonInput2.dataset.json);
 
         if (resourceJsonData !== null) {
             saveModifiedJson(resourceJsonData);
         }
         resourceJsonData = jsonInput2;
-        displayJson("json2", jsonData, $('#json-viewer'), jsonData, []);
+        displayJson("json2", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
     }
+    finally {
+       hideLoadingSpinner();
+   }
 });
 
 $('#load-json-merged').click(function () {
     try {
+        showLoadingSpinner();
         const jsonData = JSON.parse(fileInputMerged.dataset.json);
 
         if (resourceJsonData !== null) {
             saveModifiedJson(resourceJsonData);
         }
         resourceJsonData = fileInputMerged;
-        displayJson("merged", jsonData, $('#json-viewer'), jsonData, []);
+        displayJson("merged", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
     }
+    finally {
+       hideLoadingSpinner();
+   }
 });
 
 
@@ -435,6 +464,8 @@ function removeDisabled(elementId) {
 
 //merge file
 $('#merge-json').click(function () {
+    showLoadingSpinner();
+
     try {
         const jsonData1 = JSON.parse(jsonInput1.dataset.json);
         const jsonData2 = JSON.parse(jsonInput2.dataset.json);
@@ -446,7 +477,7 @@ $('#merge-json').click(function () {
                 saveModifiedJson(resourceJsonData);
             }
             resourceJsonData = fileInputMerged;
-            displayJson("merged", mergedJson, $('#json-viewer'), mergedJson, []);
+            displayJson("merged", mergedJson, $('#json-viewer'), JSON.parse(JSON.stringify(mergedJson)), []);
             fileInputMerged.dataset.json = JSON.stringify(mergedJson);
 
             removeDisabled('load-json-merged');
@@ -458,6 +489,9 @@ $('#merge-json').click(function () {
         }
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
+    }
+    finally{
+        hideLoadingSpinner();
     }
 
     const button = document.getElementById('load-json-merged');
@@ -472,7 +506,40 @@ $('#merge-json').click(function () {
 
 });
 
+function mergeDeep(target, source) {
+    const isObject = (obj) => obj && typeof obj === 'object';
+
+    if (!isObject(target) || !isObject(source)) {
+        return source;
+    }
+
+    Object.keys(source).forEach((key) => {
+        const targetValue = target[key];
+        const sourceValue = source[key];
+        if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
+            target[key] = targetValue.concat(sourceValue);
+        } else if (isObject(targetValue) && isObject(sourceValue)) {
+            target[key] = mergeDeep(Object.assign({}, targetValue), sourceValue);
+        } else {
+            if (sourceValue !== undefined && sourceValue !== null && sourceValue !== ""){
+                target[key] = sourceValue;
+            }
+        }
+    });
+
+    return target;
+}
+
 function mergeJson(json1, json2) {
+    //iterate through json1 and get number of objects together
+    let numberOfObjects = 0;
+    for (const table in json1.data) {
+        if (json1.data.hasOwnProperty(table)) {
+            numberOfObjects += json1.data[table].length;
+        }
+    }
+    
+    let solvedObjects = 0;
     // Iterate through each table in the first JSON object
     for (const table in json2.data) {
         if (json2.data.hasOwnProperty(table)) {
@@ -480,39 +547,29 @@ function mergeJson(json1, json2) {
             const table2 = json2.data[table] || [];
 
             // Iterate through each object in the second table
-            for (const obj2 of table2) {
-                // Check if there is a corresponding object in the first table with the same GUID
-                const obj1 = table1.find((obj) => obj.guid === obj2.guid);
-                if (obj1) {
-                    // If a corresponding object exists, iterate through each property in the object from the first table
-                    for (const prop in obj2) {
-                        if (obj2.hasOwnProperty(prop)) {
-                            if (obj1.hasOwnProperty(prop)) {
-                                // Check if the property value is not null or undefined, and if the corresponding property exists in the object from the second table
-                                if ((obj2[prop] == null || obj2[prop] == undefined || obj2[prop] == "")) {
-                                    //if there is no value in second json, keep the value in first json
-                                }
-                                else{
-                                    //if there is value in second json, replace the value in first json
-                                    obj1[prop] = obj2[prop];
-                                }
-
-                            }
-                            else {
-                                obj1[prop] = obj2[prop];
-                            }
-
-                        }
-                    }
-                } else {
-                    // If a corresponding object does not exist, append the object from the second table to the first table as is
-                    table1.push(obj2);
-                }
-            }
-
-            // If a corresponding table does not exist in the second JSON object, add the entire table from the first JSON object to the second JSON object
-            if (!json1.data.hasOwnProperty(table)) {
+            if ((table1 == undefined) && table2.length > 0) {
+                //if there is no data in first json, copy the data from second json
                 json1.data[table] = table2;
+            }
+            else {
+                for (const obj2 of table2) {
+                    // Check if there is a corresponding object in the first table with the same GUID
+                    const obj1 = table1.find((obj) => obj.guid === obj2.guid);
+                    if (obj1) {
+                        // If a corresponding object exists, merge the objects recursively
+                        mergeDeep(obj1, obj2);
+                    } else {
+                        // If a corresponding object does not exist, append the object from the second table to the first table as is
+                        table1.push(obj2);
+                    }
+                    solvedObjects++;
+                    if (solvedObjects % 10 === 0) {
+                        //update progress bar
+                        const progress = solvedObjects / numberOfObjects * 100;
+                        updateProgressBar(progress);
+                    }
+
+                }
             }
         }
     }
@@ -768,8 +825,7 @@ function handleDragOver(event) {
 
 dropZone1.addEventListener("dragover", handleDragOver);
 dropZone1.addEventListener("drop", function (event) {
-    const spinner = document.querySelector("#drop-zone1 .spinner");
-    spinner.style.display = "block";
+    showLoadingSpinner();
     handleFileSelect(event, function (content, file) {
         jsonInput1.dataset.json = content;
         const jsonData = JSON.parse(jsonInput1.dataset.json);
@@ -778,27 +834,25 @@ dropZone1.addEventListener("drop", function (event) {
             saveModifiedJson(resourceJsonData);
         }
         resourceJsonData = jsonInput1;
-        displayJson("json1", jsonData, $('#json-viewer'), jsonData, []);
+        displayJson("json1", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
         $("#drop-zone1-text").text("File loaded: " + file.name);
-        spinner.style.display = "none";
+        hideLoadingSpinner();
     });
 
 });
 
 dropZone1.addEventListener("click", function () {
-    const spinner = document.querySelector("#drop-zone1 .spinner");
-    spinner.style.display = "block";
+    showLoadingSpinner();
     jsonInput1.click();
     //wait 500 ms and hide spinner
     setTimeout(function () {
-        spinner.style.display = "none";
+        hideLoadingSpinner();
     }, 500);
 });
 
 dropZone2.addEventListener("dragover", handleDragOver);
 dropZone2.addEventListener("drop", function (event) {
-    const spinner = document.querySelector("#drop-zone2 .spinner");
-    spinner.style.display = "block";
+    showLoadingSpinner();
     handleFileSelect(event, function (content, file) {
         jsonInput2.dataset.json = content;
     });
@@ -808,51 +862,46 @@ dropZone2.addEventListener("drop", function (event) {
         saveModifiedJson(resourceJsonData);
     }
     resourceJsonData = jsonInput2;
-    displayJson("json2", jsonData, $('#json-viewer'), jsonData, []);
+    displayJson("json2", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
     $("#drop-zone2-text").text("File loaded: " + file.name);
-    spinner.style.display = "none";
+    hideLoadingSpinner();
 });
 
 dropZone2.addEventListener("click", function () {
-    const spinner = document.querySelector("#drop-zone2 .spinner");
-    spinner.style.display = "block";
+    showLoadingSpinner();
     jsonInput2.click();
     //wait 500 ms and hide spinner
     setTimeout(function () {
-        spinner.style.display = "none";
+        hideLoadingSpinner();
     }, 500);
 });
 
 function clickToUpload(inputId, dropZoneId) {
     const fileInput = document.getElementById(inputId);
     //get spinner based on dropzone id
-    const dropZone = document.getElementById(dropZoneId);
-    const spinner = dropZone.querySelector(".spinner");
-
-    spinner.style.display = "block";
+    showLoadingSpinner();
     fileInput.click();
 
     //wait 500 ms and hide spinner
     setTimeout(function () {
-        spinner.style.display = "none";
+        hideLoadingSpinner();
     }, 500);
 }
 
 function handleFileInputChange(event, dropZoneId, jsonInputId, buttonLoadId, buttonCheckId, buttonDownloadId) {
     const jsonNumber = "json" + dropZoneId.slice(-1);
-    const spinner = document.querySelector(`#${dropZoneId} .spinner`);
     const buttonLoad = document.getElementById(buttonLoadId);
     const buttonDownload = document.getElementById(buttonDownloadId);
     const buttonCheck = document.getElementById(buttonCheckId);
     const jsonInput = document.getElementById(jsonInputId);
 
     if (event.target.files.length === 0) {
-        spinner.style.display = "none";
+        hideLoadingSpinner();
     }
 
     const file = event.target.files[0];
     if (file) {
-        spinner.style.display = "block";
+        showLoadingSpinner();
         const reader = new FileReader();
         reader.onload = function (e) {
             const jsonData = JSON.parse(e.target.result);
@@ -861,7 +910,7 @@ function handleFileInputChange(event, dropZoneId, jsonInputId, buttonLoadId, but
                 saveModifiedJson(resourceJsonData);
             }
             resourceJsonData = jsonInput;
-            displayJson(jsonNumber, jsonData, $('#json-viewer'), jsonData, []);
+            displayJson(jsonNumber, jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
             $(`#${dropZoneId}-text`).text("File loaded: " + file.name);
             jsonInput.dataset.json = JSON.stringify(jsonData);
 
@@ -874,7 +923,7 @@ function handleFileInputChange(event, dropZoneId, jsonInputId, buttonLoadId, but
                 buttonDownload.disabled = false;
             }
 
-            spinner.style.display = "none";
+            hideLoadingSpinner();
             checkMergePossible();
         };
         reader.readAsText(file);
