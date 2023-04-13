@@ -7,67 +7,66 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
-<body>    
+<body>
     <div id="overlay">
         <div class="spinner"></div>
         <div class="progress-bar">
             <div class="progress-bar-inner"></div>
         </div>
     </div>
-
     <h1>Data standard structure viewer and editor</h1>
 
     <div class="container">
         <div class="left-side">
-            <div class="container-dropZone">
-                <div class="drop-zone" id="drop-zone1">
-                    <span id="drop-zone1-text">Drag and drop JSON file here or</span>
-                    <input type="file" id="fileInput1" style="display:none" dataset="">
-                    <pre id="jsonOutput1"></pre>
+            <div>
+                <div class="container-dropZone">
+                    <div class="drop-zone" id="drop-zone1">
+                        <span id="drop-zone1-text">Drag and drop JSON file here</span>
+                        <input type="file" id="fileInput1" style="display:none" dataset="">
+                        <pre id="jsonOutput1"></pre>
+                    </div>
+                    <button onclick="clickToUpload('fileInput1', 'drop-zone1')">Load JSON file 1</button>
+                    <div>
+                        <button id="merge-json" class="disabled">Merge JSONs</button>
+                        <input type="file" id="fileInputMerged" style="display:none" data-json=""> 
+                    </div>
                 </div>
-                <button onclick="clickToUpload('fileInput1', 'drop-zone1')">Load JSON file 1</button>
-            </div>
-            
-            <div class="container-dropZone">
-                <div class="drop-zone" id="drop-zone2">
-                    <span id="drop-zone2-text">Drag and drop second JSON file here for merging or</span>
-                    <input type="file" id="fileInput2" style="display:none" dataset="">
-                    <pre id="jsonOutput2"></pre>
+                <div class="container-dropZone">
+                    <div class="drop-zone" id="drop-zone2">
+                        <span id="drop-zone2-text">Drag and drop second JSON file here for merging</span>
+                        <input type="file" id="fileInput2" style="display:none" dataset="">
+                        <pre id="jsonOutput2"></pre>
+                    </div>
+                    <button onclick="clickToUpload('fileInput2', 'drop-zone2')">Load JSON file 2</button>
                 </div>
-                <button onclick="clickToUpload('fileInput2', 'drop-zone2')">Load JSON file 2</button>
             </div>
 
-            <div>
-                <h2>Merge JSON files</h2>
-                <button id="merge-json" class="disabled">Merge JSONs</button>
-                <input type="file" id="fileInputMerged" style="display:none" data-json="">
-            </div>
 
-            <div>
-                <h2>Check JSON files</h2>
-                <button id="check-json1" class="disabled">Check JSON 1</button>
-                <button id="check-json2" class="disabled">Check JSON 2</button>
-                <button id="check-json-merged" class="disabled">Check merged JSON</button>
-            </div>
+            <br />
+            <h2>Errors Viewer</h2>
+            <h3>Check JSON files</h3>
+            <button id="check-json1" class="disabled">Check JSON 1</button>
+            <button id="check-json2" class="disabled">Check JSON 2</button>
+            <button id="check-json-merged" class="disabled">Check merged JSON</button>
+            <div id="errors-viewer"></div>
 
-            <div>
-                <h2>Download files</h2>
-                <button id="download-json1" class="disabled">Download JSON 1</button>
-                <button id="download-json2" class="disabled">Download JSON 2</button>
-                <button id="download-merge" class="disabled">Download merged JSON</button>
-                <button id="download-changes">Download change file JSON</button>
-            </div>
+
         </div>
 
         <div class="right-side">
-            <h2>Errors Viewer</h2>
-            <div id="errors-viewer"></div>
-
             <h2>DSS Viewer</h2>
             <div>
                 <button id="load-json1" class="disabled">Show JSON 1</button>
+                <button id="download-json1" class="disabled">Download JSON 1</button>
+                <button id="download-changes">Download change file JSON</button>
+            </div>
+            <div>
                 <button id="load-json2" class="disabled">Show JSON 2</button>
+                <button id="download-json2" class="disabled">Download JSON 2</button>
+            </div>
+            <div>
                 <button id="load-json-merged" class="disabled">Show merged JSON</button>
+                <button id="download-merge" class="disabled">Download merged JSON</button>
             </div>
             <h3>Filter</h3>
             <div id="dss-filter"></div>

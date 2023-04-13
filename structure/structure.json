@@ -6,6 +6,7 @@
     "color": "Colors",
     "precision": "GraphicalPrecisions",
     "properties": "Properties",
+    "dataType": "DataTypes",
     "ifcType": "IfcTypes",
     "unit": "Units"
 }
