@@ -8,7 +8,8 @@ body {
     padding: 0;
 }
 
-h1, h2 {
+h1,
+h2 {
     color: #4a4a4a;
     font-weight: 300;
     margin-top: 0;
@@ -37,38 +38,60 @@ button {
     letter-spacing: 1px;
 }
 
+.blink {
+    animation: blink 1s linear infinite;
+}
+
+@keyframes blink {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+button.selected {
+    background-color: #f13e4d;
+}
+
 button:hover {
     background-color: #27ae60;
 }
 
 button.select-all-btn,
 button.filter-out-all-btn {
-  background-color: #27ae60;
-  border: none;
-  color: white;
-  padding: 8px 12px;
-  margin: 4px;
-  cursor: pointer;
+    background-color: #27ae60;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    margin: 4px;
+    cursor: pointer;
 }
 
 button.filter-btn {
-  background-color: #007bff;
-  border: none;
-  color: white;
-  padding: 8px 12px;
-  margin: 4px;
-  cursor: pointer;
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    margin: 4px;
+    cursor: pointer;
 }
 
 button.filter-btn.filtered-out {
-  background-color: #ccc;
+    background-color: #ccc;
 }
 
 .drop-zone {
     border: 2px dashed #ccc;
     padding: 20px;
     text-align: center;
-    margin-bottom: 20px;    
+    margin-bottom: 20px;
     width: 50%;
 }
 
@@ -153,6 +176,7 @@ button.filter-btn.filtered-out {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }
@@ -177,7 +201,8 @@ button.filter-btn.filtered-out {
 }
 
 .modified-value {
-    color: #f00; /* Change to your desired color */
+    color: #f00;
+    /* Change to your desired color */
 }
 
 .hover-bubble {
@@ -208,4 +233,3 @@ button.filter-btn.filtered-out {
 .hover-bubble td {
     padding: 2px 0;
 }
-

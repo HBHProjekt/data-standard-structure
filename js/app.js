@@ -400,59 +400,118 @@ function updateOriginalJson(keyChain, parsedValue, originalJson) {
     currentObj[keyChain[keyChain.length - 1]] = parsedValue;
 }
 
-$('#load-json1').click(function () {
-    try {
-        showLoadingSpinner();
-        const jsonData = JSON.parse(jsonInput1.dataset.json);
-
-        if (resourceJsonData !== null) {
-            saveModifiedJson(resourceJsonData);
+//go through show buttons which has id with "load" in it, add selected one style "button_selected"
+function removeSelectedButton() {
+    //get all buttons in document
+    const buttons = document.getElementsByTagName("button");
+    for (let i = 0; i < buttons.length; i++) {
+        if (buttons[i].id.includes("load")) {
+            buttons[i].classList.remove("selected");
         }
-        resourceJsonData = jsonInput1;
-
-        displayJson("json1", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
-    } catch (error) {
-        alert('Invalid JSON data: ' + error.message);
     }
-     finally {
-        hideLoadingSpinner();
+}
+
+
+
+$('#load-json1').click(function () {
+    // Add the confirmation
+    const userConfirmed = window.confirm('Loading the file to the viewer may take some time. Are you sure you want to proceed?');
+
+    // If the user confirmed, proceed with loading the JSON
+    if (userConfirmed) {
+        showLoadingSpinner();
+        
+        setTimeout(() => {
+            try {
+                const jsonData = JSON.parse(jsonInput1.dataset.json);
+
+                if (resourceJsonData !== null) {
+                    saveModifiedJson(resourceJsonData);
+                }
+                resourceJsonData = jsonInput1;
+
+                displayJson("json1", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
+
+                removeSelectedButton();
+                this.classList.add("selected");
+            } catch (error) {
+                alert('Invalid JSON data: ' + error.message);
+            }
+            finally {
+                hideLoadingSpinner();
+            }
+
+        }, 0);
+    } else {
+        console.log('User cancelled loading the file to the viewer.');
     }
 });
 
 $('#load-json2').click(function () {
-    try {
-        showLoadingSpinner();
-        const jsonData = JSON.parse(jsonInput2.dataset.json);
+    // Add the confirmation
+    const userConfirmed = window.confirm('Loading the file to the viewer may take some time. Are you sure you want to proceed?');
 
-        if (resourceJsonData !== null) {
-            saveModifiedJson(resourceJsonData);
-        }
-        resourceJsonData = jsonInput2;
-        displayJson("json2", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
-    } catch (error) {
-        alert('Invalid JSON data: ' + error.message);
+    // If the user confirmed, proceed with loading the JSON
+    if (userConfirmed) {
+        showLoadingSpinner();
+
+        setTimeout(() => {
+            try {
+                const jsonData = JSON.parse(jsonInput2.dataset.json);
+
+                if (resourceJsonData !== null) {
+                    saveModifiedJson(resourceJsonData);
+                }
+                resourceJsonData = jsonInput2;
+                displayJson("json2", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
+
+                removeSelectedButton();
+                this.classList.add("selected");
+            } catch (error) {
+                alert('Invalid JSON data: ' + error.message);
+            }
+            finally {
+                hideLoadingSpinner();
+            }
+
+        }, 0);
+    } else {
+        console.log('User cancelled loading the file to the viewer.');
     }
-    finally {
-       hideLoadingSpinner();
-   }
 });
 
 $('#load-json-merged').click(function () {
-    try {
-        showLoadingSpinner();
-        const jsonData = JSON.parse(fileInputMerged.dataset.json);
+    // Add the confirmation
+    const userConfirmed = window.confirm('Loading the file to the viewer may take some time. Are you sure you want to proceed?');
 
-        if (resourceJsonData !== null) {
-            saveModifiedJson(resourceJsonData);
-        }
-        resourceJsonData = fileInputMerged;
-        displayJson("merged", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
-    } catch (error) {
-        alert('Invalid JSON data: ' + error.message);
+    // If the user confirmed, proceed with loading the JSON
+    if (userConfirmed) {
+        showLoadingSpinner();
+
+        setTimeout(() => {
+            try {
+                
+                const jsonData = JSON.parse(fileInputMerged.dataset.json);
+
+                if (resourceJsonData !== null) {
+                    saveModifiedJson(resourceJsonData);
+                }
+                resourceJsonData = fileInputMerged;
+                displayJson("merged", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
+
+                removeSelectedButton();
+                this.classList.add("selected");
+            } catch (error) {
+                alert('Invalid JSON data: ' + error.message);
+            }
+            finally {
+                hideLoadingSpinner();
+            }
+
+        }, 0);
+    } else {
+        console.log('User cancelled loading the file to the viewer.');
     }
-    finally {
-       hideLoadingSpinner();
-   }
 });
 
 
@@ -464,20 +523,15 @@ function removeDisabled(elementId) {
 
 //merge file
 $('#merge-json').click(function () {
-    showLoadingSpinner();
 
     try {
+
+        showLoadingSpinner();
         const jsonData1 = JSON.parse(jsonInput1.dataset.json);
         const jsonData2 = JSON.parse(jsonInput2.dataset.json);
         //check if both jsons are valid
         if (jsonData1 && jsonData2) {
             const mergedJson = mergeJson(jsonData1, jsonData2);
-
-            if (resourceJsonData !== null) {
-                saveModifiedJson(resourceJsonData);
-            }
-            resourceJsonData = fileInputMerged;
-            displayJson("merged", mergedJson, $('#json-viewer'), JSON.parse(JSON.stringify(mergedJson)), []);
             fileInputMerged.dataset.json = JSON.stringify(mergedJson);
 
             removeDisabled('load-json-merged');
@@ -490,7 +544,7 @@ $('#merge-json').click(function () {
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
     }
-    finally{
+    finally {
         hideLoadingSpinner();
     }
 
@@ -502,9 +556,25 @@ $('#merge-json').click(function () {
     } else {
         button.classList.remove('disabled');
         button.disabled = false;
+        //show messege popup to user that json is merged
+        alert('Jsons are merged and available to show in viewer or download', 'success');
+
+        //let download merge button blink for 3 seconds
+        blinkButton('download-merge')
+        blinkButton('load-json-merged')
     }
 
 });
+
+function blinkButton(buttonId) {
+    // Get button by id
+    const button = $('#' + buttonId);
+
+    button.addClass('blink');
+    setTimeout(function () {
+        button.removeClass('blink');
+    }, 3000);
+}
 
 function mergeDeep(target, source) {
     const isObject = (obj) => obj && typeof obj === 'object';
@@ -521,7 +591,7 @@ function mergeDeep(target, source) {
         } else if (isObject(targetValue) && isObject(sourceValue)) {
             target[key] = mergeDeep(Object.assign({}, targetValue), sourceValue);
         } else {
-            if (sourceValue !== undefined && sourceValue !== null && sourceValue !== ""){
+            if (sourceValue !== undefined && sourceValue !== null && sourceValue !== "") {
                 target[key] = sourceValue;
             }
         }
@@ -538,7 +608,7 @@ function mergeJson(json1, json2) {
             numberOfObjects += json1.data[table].length;
         }
     }
-    
+
     let solvedObjects = 0;
     // Iterate through each table in the first JSON object
     for (const table in json2.data) {
@@ -830,11 +900,6 @@ dropZone1.addEventListener("drop", function (event) {
         jsonInput1.dataset.json = content;
         const jsonData = JSON.parse(jsonInput1.dataset.json);
 
-        if (resourceJsonData !== null) {
-            saveModifiedJson(resourceJsonData);
-        }
-        resourceJsonData = jsonInput1;
-        displayJson("json1", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
         $("#drop-zone1-text").text("File loaded: " + file.name);
         hideLoadingSpinner();
     });
@@ -858,11 +923,6 @@ dropZone2.addEventListener("drop", function (event) {
     });
     const jsonData = JSON.parse(jsonInput2.dataset.json);
 
-    if (resourceJsonData !== null) {
-        saveModifiedJson(resourceJsonData);
-    }
-    resourceJsonData = jsonInput2;
-    displayJson("json2", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
     $("#drop-zone2-text").text("File loaded: " + file.name);
     hideLoadingSpinner();
 });
@@ -906,11 +966,6 @@ function handleFileInputChange(event, dropZoneId, jsonInputId, buttonLoadId, but
         reader.onload = function (e) {
             const jsonData = JSON.parse(e.target.result);
 
-            if (resourceJsonData !== null) {
-                saveModifiedJson(resourceJsonData);
-            }
-            resourceJsonData = jsonInput;
-            displayJson(jsonNumber, jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
             $(`#${dropZoneId}-text`).text("File loaded: " + file.name);
             jsonInput.dataset.json = JSON.stringify(jsonData);
 
@@ -927,6 +982,14 @@ function handleFileInputChange(event, dropZoneId, jsonInputId, buttonLoadId, but
             checkMergePossible();
         };
         reader.readAsText(file);
+
+        //show messege popup to user that json is merged
+        alert('Json is loaded and available to show in viewer or download', 'success');
+
+        //let download merge button blink for 3 seconds        
+        blinkButton(buttonLoadId)
+        blinkButton(buttonDownloadId)
+
     } else {
         buttonLoad.classList.add('disabled');
         buttonLoad.disabled = true;
