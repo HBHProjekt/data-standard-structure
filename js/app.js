@@ -133,6 +133,17 @@ function displayJson(origin, json, parentElement, originalJson, keyChain = [], d
                 nodeElement.append(indexElement);
 
                 displayJson(origin, value, nodeElement, originalJson, keyChain.concat([i]), depth + 1);
+            
+                // Make the key clickable
+                indexElement.click(function () {
+                    const expandCollapse = $(this).find('.expand-collapse');
+                    if (expandCollapse.text() === '+') {
+                        expandCollapse.text('-');
+                    } else {
+                        expandCollapse.text('+');
+                    }
+                    $(this).siblings().toggle();
+                });
             }
         } else {
             for (const key in json) {
@@ -166,9 +177,52 @@ function displayJson(origin, json, parentElement, originalJson, keyChain = [], d
             editable = false;
         }
 
-        //if displayJson is merge or json2 make it not editable        
+        valueElement = $("<span contenteditable='" + editable + "'></span>");
 
-        const valueElement = $("<span contenteditable='" + editable + "'></span>").text(JSON.stringify(json)).attr("data-keychain", JSON.stringify(keyChain));
+        //if key of the element is in the configDict make it select instead of span
+        if (configDict.hasOwnProperty(keyChain[keyChain.length - 1]) && configDict[keyChain[keyChain.length - 1]] !== keyChain[1]) {
+            
+
+            const selectElement = $("<select></select>").attr("data-keychain", JSON.stringify(keyChain));
+            valueElement.append(selectElement);
+
+            // Add the available options for the user to choose from
+
+            const tableDataName = configDict[keyChain[keyChain.length - 1]];
+
+            const options = [];
+
+            for (const item of originalJson.data[tableDataName]) {
+                if (!options.includes(item)) {
+                    options.push(item);
+                }
+            }
+
+            //append empty option
+            const optionElement = $("<option></option>").text("").attr("value", "");
+            selectElement.append(optionElement);
+
+            for (const option of options) {
+                const optionElement = $("<option></option>").text(JSON.stringify(option)).attr("value", option.guid);
+
+                if (option.guid === json && json !== null && json !== undefined && json !== "") {
+                    optionElement.attr("selected", "selected");
+                }
+
+                selectElement.append(optionElement);
+            }
+
+            // Listen for changes in the selected value
+            selectElement.on("change", function() {
+                handleValueChange($(this), originalJson);
+            });
+
+        }
+        //if value is string (not guid and not from config), make it editable by writing it in span
+        else {
+            valueElement = $("<span contenteditable='" + editable + "'></span>").text(JSON.stringify(json)).attr("data-keychain", JSON.stringify(keyChain));            
+        }
+
         parentElement.append(valueElement);
 
         //if value is changed mark it as modified
@@ -186,42 +240,12 @@ function displayJson(origin, json, parentElement, originalJson, keyChain = [], d
             markAsModified(valueElement);
         }
 
+
         valueElement.on("blur", function () {
-            const newValue = $(this).text();
-            const keyChain = JSON.parse($(this).attr("data-keychain"));
-
-            try {
-                const parsedValue = JSON.parse(newValue);
-                //check if value is already changed
-                let originalValue = "";
-                for (const change of changedValues) {
-                    const parsedChange = JSON.parse(change);
-                    if (JSON.stringify(parsedChange.keyChain) === JSON.stringify(keyChain)) {
-                        originalValue = parsedChange.oldValue;
-                        break;
-                    }
-                }
-
-                if (originalValue === "") {
-                    originalValue = getValueFromKeyChain(keyChain, originalJson);
-                }
-
-                const oldValue = JSON.stringify(originalValue);
-
-                if (newValue !== oldValue) {
-                    updateOriginalJson(keyChain, parsedValue, originalJson);
-                    markAsModified($(this), originalValue, parsedValue);
-                } else {
-                    unmarkAsModified($(this));
-                }
-
-            } catch (error) {
-                // If the input is invalid JSON, revert the change
-                $(this).text(JSON.stringify(json));
-                alert("Invalid JSON value. Please enter a valid JSON value.");
+            if (!$(this).find("select").length) {
+                handleValueChange($(this), originalJson);
             }
         });
-
 
         //check if keychain is at least 2 levels deep
         key = null;
@@ -282,6 +306,39 @@ function displayJson(origin, json, parentElement, originalJson, keyChain = [], d
     }
 }
 
+function handleValueChange(element, originalJson) {
+    const newValue = element.is("select") ? JSON.stringify(element.val()) : element.text();
+    const keyChain = JSON.parse(element.attr("data-keychain"));
+
+    try {
+        const parsedValue = JSON.parse(newValue);
+        let originalValue = "";
+        for (const change of changedValues) {
+            const parsedChange = JSON.parse(change);
+            if (JSON.stringify(parsedChange.keyChain) === JSON.stringify(keyChain)) {
+                originalValue = parsedChange.oldValue;
+                break;
+            }
+        }
+
+        if (originalValue === "") {
+            originalValue = getValueFromKeyChain(keyChain, originalJson);
+        }
+
+        const oldValue = JSON.stringify(originalValue);
+
+        if (newValue !== oldValue) {
+            updateOriginalJson(keyChain, parsedValue, originalJson);
+            markAsModified(element, originalValue, parsedValue);
+        } else {
+            unmarkAsModified(element);
+        }
+
+    } catch (error) {
+        element.text(JSON.stringify(json));
+        alert("Invalid JSON value. Please enter a valid JSON value.");
+    }
+}
 
 //hover bubble
 function findDataByGuid(originalJson, tableName, guid) {
@@ -682,8 +739,13 @@ function reconstructJson(node) {
 
         if (siblingValue.length > 0) {
             try {
-                const parsedValue = JSON.parse(siblingValue.text());
-                result = parsedValue;
+                //if siblingValue has a child item select, get its value, else get span text value
+                if (siblingValue.children('select').length > 0) {
+                    result = siblingValue.children('select').val();
+                }
+                else {
+                    result = JSON.parse(siblingValue.text());
+                }
             } catch (error) {
                 console.error('Error parsing value:', siblingValue.text());
             }
@@ -720,6 +782,11 @@ function downloadJsonFile(content, fileName) {
 
 $('#download-merge').click(function () {
     try {
+        if (resourceJsonData !== null) {
+            saveModifiedJson(resourceJsonData);
+        }
+        resourceJsonData = fileInputMerged;
+
         const jsonData = JSON.parse(fileInputMerged.dataset.json);
         const jsonContent = JSON.stringify(jsonData, null, 2);
         downloadJsonFile(jsonContent, "merged.json");
@@ -731,6 +798,11 @@ $('#download-merge').click(function () {
 
 $('#download-json1').click(function () {
     try {
+        if (resourceJsonData !== null) {
+            saveModifiedJson(resourceJsonData);
+        }
+        resourceJsonData = jsonInput1;
+
         const jsonData = JSON.parse(jsonInput1.dataset.json);
         const jsonContent = JSON.stringify(jsonData, null, 2);
         downloadJsonFile(jsonContent, "json1.json");
@@ -742,6 +814,11 @@ $('#download-json1').click(function () {
 
 $('#download-json2').click(function () {
     try {
+        if (resourceJsonData !== null) {
+            saveModifiedJson(resourceJsonData);
+        }
+        resourceJsonData = jsonInput2;
+
         const jsonData = JSON.parse(jsonInput2.dataset.json);
         const jsonContent = JSON.stringify(jsonData, null, 2);
         downloadJsonFile(jsonContent, "json2.json");
@@ -858,7 +935,7 @@ function checkJsonValidity(json) {
 }
 
 function checkGUIDRecursively(value, guids, errors, table, objIndex, prop) {
-    
+
     if (configDict.hasOwnProperty(prop)) {
         if (Array.isArray(value)) {
             for (const item of value) {
@@ -870,7 +947,7 @@ function checkGUIDRecursively(value, guids, errors, table, objIndex, prop) {
                     errors.push(`Invalid GUID definition: '${item}' is not GUID. Table ${table}, object index ${objIndex}, property ${prop}`);
                 }
             }
-        }  else {
+        } else {
             if (isGuid(value)) {
                 if (!guids.has(value)) {
                     errors.push(`Invalid GUID reference: ${value} has no reference. Table ${table}, object index ${objIndex}, property ${prop}`);
