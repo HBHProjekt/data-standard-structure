@@ -11,6 +11,7 @@ const localStructureData = {
     "color": "Colors",
     "precision": "GraphicalPrecisions",
     "properties": "Properties",
+    "dataType": "DataTypes",
     "ifcType": "IfcTypes",
     "unit": "Units"
 }
@@ -420,7 +421,7 @@ $('#load-json1').click(function () {
     // If the user confirmed, proceed with loading the JSON
     if (userConfirmed) {
         showLoadingSpinner();
-        
+
         setTimeout(() => {
             try {
                 const jsonData = JSON.parse(jsonInput1.dataset.json);
@@ -490,7 +491,7 @@ $('#load-json-merged').click(function () {
 
         setTimeout(() => {
             try {
-                
+
                 const jsonData = JSON.parse(fileInputMerged.dataset.json);
 
                 if (resourceJsonData !== null) {
@@ -808,7 +809,14 @@ function checkJsonValidity(json) {
         if (json.data.hasOwnProperty(table)) {
             const tableData = json.data[table];
             for (const obj of tableData) {
-                guids.add(obj.guid);
+                if (isGuid(obj.guid)) {
+                    //add guid and table name to set of guids
+                    guids.add(obj.guid);
+                }
+                else {
+                    errors.push(`Invalid GUID value: Table ${table}, object GUID ${obj.guid}`);
+                }
+
             }
         }
     }
@@ -816,6 +824,21 @@ function checkJsonValidity(json) {
     // Check that all the GUID references in the JSON object exist
     for (const table in json.data) {
         if (json.data.hasOwnProperty(table)) {
+            tableToCheck = true;
+            for (const valueTables in configDict) {
+                if (configDict.hasOwnProperty(valueTables)) {
+                    const tableName = configDict[valueTables];
+                    if (table === tableName) {
+                        tableToCheck = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!tableToCheck) {
+                continue;
+            }
+
             const tableData = json.data[table];
             for (const objIndex in tableData) {
                 if (tableData.hasOwnProperty(objIndex)) {
@@ -823,21 +846,7 @@ function checkJsonValidity(json) {
                     for (const prop in obj) {
                         if (obj.hasOwnProperty(prop)) {
                             const value = obj[prop];
-                            if (Array.isArray(value)) {
-                                // Check if the value is an array of GUID references
-                                for (const item of value) {
-                                    if (isGuid(item)) {
-                                        if (!guids.has(item)) {
-                                            errors.push(`Invalid GUID reference: ${item} in table ${table}, object index ${objIndex}, property ${prop}`);
-                                        }
-                                    }
-                                }
-                            } else if (isGuid(value)) {
-                                // Check if the value is a single GUID reference
-                                if (!guids.has(value)) {
-                                    errors.push(`Invalid GUID reference: ${value} in table ${table}, object index ${objIndex}, property ${prop}`);
-                                }
-                            }
+                            checkGUIDRecursively(value, guids, errors, table, objIndex, prop);
                         }
                     }
                 }
@@ -846,6 +855,38 @@ function checkJsonValidity(json) {
     }
 
     return errors;
+}
+
+function checkGUIDRecursively(value, guids, errors, table, objIndex, prop) {
+    
+    if (configDict.hasOwnProperty(prop)) {
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                if (isGuid(item)) {
+                    if (!guids.has(item)) {
+                        errors.push(`Invalid GUID reference: ${item} has no reference. Table ${table}, object index ${objIndex}, property ${prop}`);
+                    }
+                } else {
+                    errors.push(`Invalid GUID definition: '${item}' is not GUID. Table ${table}, object index ${objIndex}, property ${prop}`);
+                }
+            }
+        }  else {
+            if (isGuid(value)) {
+                if (!guids.has(value)) {
+                    errors.push(`Invalid GUID reference: ${value} has no reference. Table ${table}, object index ${objIndex}, property ${prop}`);
+                }
+            } else {
+                errors.push(`Invalid GUID definition: '${value}' is not GUID. Table ${table}, object index ${objIndex}, property ${prop}`);
+            }
+        }
+    } else if (typeof value === 'object' && value !== null) {
+        for (const key in value) {
+            if (value.hasOwnProperty(key)) {
+                const element = value[key];
+                checkGUIDRecursively(element, guids, errors, table, objIndex, key);
+            }
+        }
+    }
 }
 
 function isGuid(value) {
