@@ -901,20 +901,6 @@ function checkJsonValidity(json) {
     // Check that all the GUID references in the JSON object exist
     for (const table in json.data) {
         if (json.data.hasOwnProperty(table)) {
-            tableToCheck = true;
-            for (const valueTables in configDict) {
-                if (configDict.hasOwnProperty(valueTables)) {
-                    const tableName = configDict[valueTables];
-                    if (table === tableName) {
-                        tableToCheck = false;
-                        break;
-                    }
-                }
-            }
-
-            if (!tableToCheck) {
-                continue;
-            }
 
             const tableData = json.data[table];
             for (const objIndex in tableData) {
@@ -923,7 +909,8 @@ function checkJsonValidity(json) {
                     for (const prop in obj) {
                         if (obj.hasOwnProperty(prop)) {
                             const value = obj[prop];
-                            checkGUIDRecursively(value, guids, errors, table, objIndex, prop);
+                            const guid = obj.hasOwnProperty('guid') ? obj.guid : null;
+                            checkGUIDRecursively(value, guids, errors, table, objIndex, prop, guid);
                         }
                     }
                 }
@@ -934,33 +921,36 @@ function checkJsonValidity(json) {
     return errors;
 }
 
-function checkGUIDRecursively(value, guids, errors, table, objIndex, prop) {
+function checkGUIDRecursively(value, guids, errors, table, objIndex, prop, guid) {
 
     if (configDict.hasOwnProperty(prop)) {
         if (Array.isArray(value)) {
             for (const item of value) {
                 if (isGuid(item)) {
                     if (!guids.has(item)) {
-                        errors.push(`Invalid GUID reference: ${item} has no reference. Table ${table}, object index ${objIndex}, property ${prop}`);
+                        errors.push(`Invalid GUID reference: ${item} has no reference. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
                     }
                 } else {
-                    errors.push(`Invalid GUID definition: '${item}' is not GUID. Table ${table}, object index ${objIndex}, property ${prop}`);
+                    errors.push(`Invalid GUID definition: '${item}' is not GUID. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
                 }
             }
         } else {
             if (isGuid(value)) {
                 if (!guids.has(value)) {
-                    errors.push(`Invalid GUID reference: ${value} has no reference. Table ${table}, object index ${objIndex}, property ${prop}`);
+                    errors.push(`Invalid GUID reference: ${value} has no reference. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
                 }
             } else {
-                errors.push(`Invalid GUID definition: '${value}' is not GUID. Table ${table}, object index ${objIndex}, property ${prop}`);
+                if (!(prop === 'customEnum' && value === '') && !(prop === 'unit' && table === 'Units')) {
+                    errors.push(`Invalid GUID definition: '${value}' is not GUID. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
+                }
             }
         }
     } else if (typeof value === 'object' && value !== null) {
         for (const key in value) {
             if (value.hasOwnProperty(key)) {
                 const element = value[key];
-                checkGUIDRecursively(element, guids, errors, table, objIndex, key);
+                const guidUnder = value.hasOwnProperty('guid') ? value.guid : null;
+                checkGUIDRecursively(element, guids, errors, table, objIndex, key, guidUnder);
             }
         }
     }
