@@ -645,7 +645,13 @@ function mergeDeep(target, source) {
         const targetValue = target[key];
         const sourceValue = source[key];
         if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
-            target[key] = targetValue.concat(sourceValue);
+            const seen = new Set(targetValue.map(JSON.stringify));
+            const mergedArray = targetValue.concat(sourceValue.filter(item => {
+                const duplicate = seen.has(JSON.stringify(item));
+                seen.add(JSON.stringify(item));
+                return !duplicate;
+            }));
+            target[key] = mergedArray;
         } else if (isObject(targetValue) && isObject(sourceValue)) {
             target[key] = mergeDeep(Object.assign({}, targetValue), sourceValue);
         } else {
