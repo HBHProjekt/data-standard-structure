@@ -708,6 +708,13 @@ function mergeJson(json1, json2) {
         }
     }
 
+    //iterate through properties which are not "data" and merge them
+    for (const prop in json2) {
+        if (json2.hasOwnProperty(prop) && prop !== "data") {
+            json1[prop] = json2[prop];
+        }
+    }
+
     // Return the merged JSON object
     return json1;
 }
