@@ -102,6 +102,46 @@ button.filter-btn.filtered-out {
 
 .error-message {
     color: red;
+    margin-bottom: 12px;
+}
+
+.error-message-warning {
+    color: #8a6d3b;
+}
+
+.error-message-info {
+    color: #31708f;
+}
+
+.diagnostic-group {
+    margin-bottom: 20px;
+}
+
+.diagnostic-group h4 {
+    margin-bottom: 8px;
+}
+
+.diagnostic-location {
+    font-weight: 600;
+}
+
+.diagnostic-code {
+    font-size: 12px;
+    opacity: 0.8;
+    text-transform: uppercase;
+}
+
+.diagnostic-message {
+    margin: 4px 0;
+}
+
+.diagnostic-details {
+    white-space: pre-wrap;
+    background: #f5f5f5;
+    color: #333;
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
 }
 
 .json-key {

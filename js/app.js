@@ -2,8 +2,10 @@ const dropZone1 = document.getElementById("drop-zone1");
 const dropZone2 = document.getElementById("drop-zone2");
 const jsonInput1 = document.getElementById("fileInput1");
 const jsonInput2 = document.getElementById("fileInput2");
+const fileInputMerged = document.getElementById("fileInputMerged");
+const dssModel = window.DSS_MODEL || {};
 
-const localStructureData = {
+const localStructureData = (dssModel.referenceFields || {
     "groupsOfProperties": "GroupsOfProperties",
     "property": "Properties",
     "customEnum": "CustomEnums",
@@ -14,18 +16,17 @@ const localStructureData = {
     "dataType": "DataTypes",
     "ifcType": "IfcTypes",
     "unit": "Units"
-}
-let configDict = {};
+});
+let configDict = Object.assign({}, localStructureData);
 
 // Load the config file and store the data in the configDict object
-fetch('../structure/structure.json')
+fetch('structure/structure.json')
     .then(response => response.json())
     .then(data => {
-        configDict = data;
+        configDict = Object.assign({}, localStructureData, data);
     })
     .catch(error => {
-
-        configDict = localStructureData; // Assign the local JSON data directly
+        configDict = Object.assign({}, localStructureData); // Assign the local JSON data directly
     });
 
 
@@ -59,6 +60,177 @@ function hideLoadingSpinner() {
 function updateProgressBar(progress) {
     const progressBarInner = document.querySelector('.progress-bar-inner');
     progressBarInner.style.width = progress + '%';
+}
+
+function normalizeDiagnostic(entry, fallbackSeverity = "error") {
+    if (typeof entry === "string") {
+        return {
+            severity: fallbackSeverity,
+            code: "MESSAGE",
+            location: "Application",
+            message: entry
+        };
+    }
+
+    return {
+        severity: entry.severity || fallbackSeverity,
+        code: entry.code || "MESSAGE",
+        location: entry.location || "Application",
+        message: entry.message || "",
+        details: entry.details || null
+    };
+}
+
+function createValidationDiagnostics(errors) {
+    return errors.map(function (error) {
+        return normalizeDiagnostic({
+            severity: "error",
+            code: "DSS_VALIDATION",
+            location: "DSS validation",
+            message: error
+        });
+    });
+}
+
+function getStoredImportDiagnostics(jsonInput) {
+    if (!jsonInput || !jsonInput.dataset.importDiagnostics) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(jsonInput.dataset.importDiagnostics).map(function (entry) {
+            return normalizeDiagnostic(entry, "warning");
+        });
+    } catch (error) {
+        return [normalizeDiagnostic({
+            severity: "warning",
+            code: "IMPORT_DIAGNOSTICS_PARSE_ERROR",
+            location: "Imported diagnostics",
+            message: "Stored import diagnostics could not be parsed."
+        })];
+    }
+}
+
+function clearImportState(jsonInput) {
+    jsonInput.dataset.json = '';
+    jsonInput.dataset.importDiagnostics = '[]';
+    jsonInput.dataset.importSourceType = '';
+    jsonInput.dataset.importFileName = '';
+}
+
+function getCombinedDiagnostics(jsonInput) {
+    const diagnostics = getStoredImportDiagnostics(jsonInput);
+
+    if (!jsonInput || !jsonInput.dataset.json) {
+        return diagnostics;
+    }
+
+    try {
+        const jsonData = JSON.parse(jsonInput.dataset.json);
+        return diagnostics.concat(createValidationDiagnostics(checkJsonValidity(jsonData)));
+    } catch (error) {
+        return diagnostics.concat([
+            normalizeDiagnostic({
+                severity: "error",
+                code: "JSON_PARSE_ERROR",
+                location: "Imported data",
+                message: "Stored imported data is not valid JSON.",
+                details: { error: error.message }
+            })
+        ]);
+    }
+}
+
+function enableImportButtons(buttonLoadId, buttonCheckId, buttonDownloadId) {
+    removeDisabled(buttonLoadId);
+    removeDisabled(buttonCheckId);
+    removeDisabled(buttonDownloadId);
+}
+
+function detectImportType(file, content) {
+    const lowerName = (file && file.name ? file.name : "").toLowerCase();
+    const trimmedContent = (content || "").trim();
+
+    if (lowerName.endsWith(".ids")) {
+        return "ids";
+    }
+
+    if (lowerName.endsWith(".json")) {
+        return "json";
+    }
+
+    if (trimmedContent.startsWith("<")) {
+        return "ids";
+    }
+
+    return "json";
+}
+
+function parseImportedContent(content, file) {
+    const importType = detectImportType(file, content);
+
+    if (importType === "ids") {
+        const importer = window.IDS_IMPORTER;
+        if (!importer || typeof importer.importIdsToDss !== "function") {
+            return {
+                success: false,
+                importType,
+                jsonData: null,
+                diagnostics: [normalizeDiagnostic({
+                    severity: "error",
+                    code: "IDS_IMPORTER_MISSING",
+                    location: "IDS import",
+                    message: "IDS importer is not available."
+                })]
+            };
+        }
+
+        const imported = importer.importIdsToDss(content, {
+            fileName: file && file.name ? file.name : "IDS import"
+        });
+
+        return {
+            success: imported.success && !!imported.jsonData,
+            importType,
+            jsonData: imported.jsonData,
+            diagnostics: (imported.diagnostics || []).map(function (entry) {
+                return normalizeDiagnostic(entry, "warning");
+            })
+        };
+    }
+
+    try {
+        return {
+            success: true,
+            importType,
+            jsonData: JSON.parse(content),
+            diagnostics: []
+        };
+    } catch (error) {
+        return {
+            success: false,
+            importType,
+            jsonData: null,
+            diagnostics: [normalizeDiagnostic({
+                severity: "error",
+                code: "JSON_PARSE_ERROR",
+                location: "JSON import",
+                message: "The JSON file could not be parsed.",
+                details: { error: error.message }
+            })]
+        };
+    }
+}
+
+function storeImportedData(jsonInput, importResult, file) {
+    jsonInput.dataset.json = JSON.stringify(importResult.jsonData);
+    jsonInput.dataset.importDiagnostics = JSON.stringify(importResult.diagnostics || []);
+    jsonInput.dataset.importSourceType = importResult.importType || "json";
+    jsonInput.dataset.importFileName = file && file.name ? file.name : "";
+}
+
+function renderImportDiagnostics(jsonInput) {
+    displayErrors(getCombinedDiagnostics(jsonInput), $('#errors-viewer'));
 }
 
 function displayJson(origin, json, parentElement, originalJson, keyChain = [], depth = 0) {
@@ -335,7 +507,7 @@ function handleValueChange(element, originalJson) {
         }
 
     } catch (error) {
-        element.text(JSON.stringify(json));
+        element.text(JSON.stringify(getValueFromKeyChain(keyChain, originalJson)));
         alert("Invalid JSON value. Please enter a valid JSON value.");
     }
 }
@@ -591,6 +763,8 @@ $('#merge-json').click(function () {
         if (jsonData1 && jsonData2) {
             const mergedJson = mergeJson(jsonData1, jsonData2);
             fileInputMerged.dataset.json = JSON.stringify(mergedJson);
+            fileInputMerged.dataset.importDiagnostics = '[]';
+            fileInputMerged.dataset.importSourceType = 'merged';
 
             removeDisabled('load-json-merged');
             removeDisabled('download-merge');
@@ -862,9 +1036,7 @@ $('#download-changes').click(function () {
 //check json validity
 $('#check-json1').click(function () {
     try {
-        const jsonData = JSON.parse(jsonInput1.dataset.json);
-        const errors = checkJsonValidity(jsonData);
-        displayErrors(errors, $('#errors-viewer'));
+        displayErrors(getCombinedDiagnostics(jsonInput1), $('#errors-viewer'));
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
     }
@@ -872,9 +1044,7 @@ $('#check-json1').click(function () {
 
 $('#check-json2').click(function () {
     try {
-        const jsonData = JSON.parse(jsonInput2.dataset.json);
-        const errors = checkJsonValidity(jsonData);
-        displayErrors(errors, $('#errors-viewer'));
+        displayErrors(getCombinedDiagnostics(jsonInput2), $('#errors-viewer'));
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
     }
@@ -882,29 +1052,63 @@ $('#check-json2').click(function () {
 
 $('#check-json-merged').click(function () {
     try {
-        const jsonData = JSON.parse(fileInputMerged.dataset.json);
-        const errors = checkJsonValidity(jsonData);
-        displayErrors(errors, $('#errors-viewer'));
+        displayErrors(getCombinedDiagnostics(fileInputMerged), $('#errors-viewer'));
     } catch (error) {
         alert('Invalid JSON data: ' + error.message);
     }
 });
 
 function checkJsonValidity(json) {
+    if (!json || typeof json !== "object") {
+        return ["JSON root must be an object."];
+    }
+
+    if (!json.data || typeof json.data !== "object") {
+        return ["JSON must contain a data object."];
+    }
+
     const guids = new Set();
     const errors = [];
+    const tables = dssModel.tables || {};
+
+    for (const tableName in tables) {
+        if (!Object.prototype.hasOwnProperty.call(json.data, tableName)) {
+            continue;
+        }
+
+        if (!Array.isArray(json.data[tableName])) {
+            errors.push(`Invalid table definition: ${tableName} must be an array.`);
+            continue;
+        }
+
+        for (const obj of json.data[tableName]) {
+            if (typeof obj !== "object" || obj === null) {
+                errors.push(`Invalid table row: ${tableName} contains a non-object value.`);
+                continue;
+            }
+
+            for (const field of tables[tableName].requiredFields || []) {
+                if (!Object.prototype.hasOwnProperty.call(obj, field)) {
+                    errors.push(`Missing required field '${field}' in table ${tableName}.`);
+                }
+            }
+        }
+    }
 
     // Collect all the GUIDs from the JSON object
     for (const table in json.data) {
         if (json.data.hasOwnProperty(table)) {
             const tableData = json.data[table];
+            if (!Array.isArray(tableData)) {
+                continue;
+            }
             for (const obj of tableData) {
-                if (isGuid(obj.guid)) {
+                if (obj && typeof obj === "object" && isGuid(obj.guid)) {
                     //add guid and table name to set of guids
                     guids.add(obj.guid);
                 }
                 else {
-                    errors.push(`Invalid GUID value: Table ${table}, object GUID ${obj.guid}`);
+                    errors.push(`Invalid GUID value: Table ${table}, object GUID ${obj && typeof obj === "object" ? obj.guid : obj}`);
                 }
 
             }
@@ -916,9 +1120,15 @@ function checkJsonValidity(json) {
         if (json.data.hasOwnProperty(table)) {
 
             const tableData = json.data[table];
+            if (!Array.isArray(tableData)) {
+                continue;
+            }
             for (const objIndex in tableData) {
                 if (tableData.hasOwnProperty(objIndex)) {
                     const obj = tableData[objIndex];
+                    if (!obj || typeof obj !== "object") {
+                        continue;
+                    }
                     for (const prop in obj) {
                         if (obj.hasOwnProperty(prop)) {
                             const value = obj[prop];
@@ -977,35 +1187,125 @@ function isGuid(value) {
 function displayErrors(errors, parentElement) {
     parentElement.empty();
 
-    if (errors.length === 0) {
+    const normalized = (errors || []).map(function (entry) {
+        return normalizeDiagnostic(entry, "error");
+    });
+
+    if (normalized.length === 0) {
         const noErrorsElement = $("<div>No errors found</div>");
         parentElement.append(noErrorsElement);
         return;
     }
 
-    for (let i = 0; i < errors.length; i++) {
-        const error = errors[i];
-        const errorElement = $(
-            `<div class="error-message">${error}</div>`
-        );
-        parentElement.append(errorElement);
-    }
+    const groups = {
+        error: [],
+        warning: [],
+        info: []
+    };
+
+    normalized.forEach(function (entry) {
+        const severity = groups[entry.severity] ? entry.severity : "warning";
+        groups[severity].push(entry);
+    });
+
+    ["error", "warning", "info"].forEach(function (severity) {
+        if (groups[severity].length === 0) {
+            return;
+        }
+
+        const section = $(`<div class="diagnostic-group diagnostic-group-${severity}"></div>`);
+        section.append(`<h4>${severity.toUpperCase()} (${groups[severity].length})</h4>`);
+
+        groups[severity].forEach(function (entry) {
+            const location = entry.location ? `<div class="diagnostic-location">${entry.location}</div>` : "";
+            const code = entry.code ? `<div class="diagnostic-code">${entry.code}</div>` : "";
+            const details = entry.details ? `<pre class="diagnostic-details">${JSON.stringify(entry.details, null, 2)}</pre>` : "";
+            section.append(`
+                <div class="error-message error-message-${severity}">
+                    ${location}
+                    <div class="diagnostic-message">${entry.message}</div>
+                    ${code}
+                    ${details}
+                </div>
+            `);
+        });
+
+        parentElement.append(section);
+    });
 }
 
-//get json file
-function handleFileSelect(event, callback) {
-    event.stopPropagation();
-    event.preventDefault();
+function disableImportButtons(buttonLoadId, buttonCheckId, buttonDownloadId) {
+    [buttonLoadId, buttonCheckId, buttonDownloadId].forEach(function (buttonId) {
+        const button = document.getElementById(buttonId);
+        button.classList.add('disabled');
+        button.disabled = true;
+    });
+}
 
-    const file = event.dataTransfer ? event.dataTransfer.files[0] : event.target.files[0];
-    if (!file) return;
+function handleImportFailure(jsonInput, buttonLoadId, buttonCheckId, buttonDownloadId, diagnostics) {
+    clearImportState(jsonInput);
+    disableImportButtons(buttonLoadId, buttonCheckId, buttonDownloadId);
+    checkMergePossible();
+    displayErrors(diagnostics, $('#errors-viewer'));
+}
+
+function handleImportedFile(file, dropZoneId, jsonInputId, buttonLoadId, buttonCheckId, buttonDownloadId) {
+    const jsonInput = document.getElementById(jsonInputId);
+    if (!file) {
+        handleImportFailure(jsonInput, buttonLoadId, buttonCheckId, buttonDownloadId, []);
+        hideLoadingSpinner();
+        return;
+    }
 
     const reader = new FileReader();
     reader.onload = function (e) {
+        const importResult = parseImportedContent(e.target.result, file);
 
-        callback(e.target.result, file);
+        if (!importResult.success || !importResult.jsonData) {
+            handleImportFailure(jsonInput, buttonLoadId, buttonCheckId, buttonDownloadId, importResult.diagnostics || []);
+            hideLoadingSpinner();
+            return;
+        }
+
+        storeImportedData(jsonInput, importResult, file);
+        $(`#${dropZoneId}-text`).text(`File loaded: ${file.name} (${importResult.importType.toUpperCase()})`);
+        enableImportButtons(buttonLoadId, buttonCheckId, buttonDownloadId);
+        renderImportDiagnostics(jsonInput);
+        hideLoadingSpinner();
+        checkMergePossible();
+
+        const diagnosticCount = getStoredImportDiagnostics(jsonInput).length;
+        const importLabel = importResult.importType === "ids" ? "IDS" : "JSON";
+        alert(`${importLabel} import finished${diagnosticCount > 0 ? ` with ${diagnosticCount} diagnostics` : ""}.`);
+        blinkButton(buttonLoadId);
+        blinkButton(buttonDownloadId);
     };
-    reader.readAsText(file, 'UTF-8');
+
+    reader.onerror = function () {
+        handleImportFailure(
+            jsonInput,
+            buttonLoadId,
+            buttonCheckId,
+            buttonDownloadId,
+            [normalizeDiagnostic({
+                severity: "error",
+                code: "FILE_READ_ERROR",
+                location: file.name,
+                message: "The selected file could not be read."
+            })]
+        );
+        hideLoadingSpinner();
+    };
+
+    reader.readAsText(file);
+}
+
+function handleFileSelect(event, dropZoneId, jsonInputId, buttonLoadId, buttonCheckId, buttonDownloadId) {
+    event.stopPropagation();
+    event.preventDefault();
+    const file = event.dataTransfer ? event.dataTransfer.files[0] : event.target.files[0];
+    showLoadingSpinner();
+    handleImportedFile(file, dropZoneId, jsonInputId, buttonLoadId, buttonCheckId, buttonDownloadId);
 }
 
 function handleDragOver(event) {
@@ -1016,114 +1316,41 @@ function handleDragOver(event) {
 
 dropZone1.addEventListener("dragover", handleDragOver);
 dropZone1.addEventListener("drop", function (event) {
-    showLoadingSpinner();
-    handleFileSelect(event, function (content, file) {
-        jsonInput1.dataset.json = content;
-        const jsonData = JSON.parse(jsonInput1.dataset.json);
-
-        $("#drop-zone1-text").text("File loaded: " + file.name);
-        hideLoadingSpinner();
-    });
-
+    handleFileSelect(event, 'drop-zone1', 'fileInput1', 'load-json1', 'check-json1', 'download-json1');
 });
-
 dropZone1.addEventListener("click", function () {
-    showLoadingSpinner();
-    jsonInput1.click();
-    //wait 500 ms and hide spinner
-    setTimeout(function () {
-        hideLoadingSpinner();
-    }, 500);
+    clickToUpload('fileInput1', 'drop-zone1');
 });
 
 dropZone2.addEventListener("dragover", handleDragOver);
 dropZone2.addEventListener("drop", function (event) {
-    showLoadingSpinner();
-    handleFileSelect(event, function (content, file) {
-        jsonInput2.dataset.json = content;
-    });
-    const jsonData = JSON.parse(jsonInput2.dataset.json);
-
-    $("#drop-zone2-text").text("File loaded: " + file.name);
-    hideLoadingSpinner();
+    handleFileSelect(event, 'drop-zone2', 'fileInput2', 'load-json2', 'check-json2', 'download-json2');
 });
-
 dropZone2.addEventListener("click", function () {
-    showLoadingSpinner();
-    jsonInput2.click();
-    //wait 500 ms and hide spinner
-    setTimeout(function () {
-        hideLoadingSpinner();
-    }, 500);
+    clickToUpload('fileInput2', 'drop-zone2');
 });
 
 function clickToUpload(inputId, dropZoneId) {
     const fileInput = document.getElementById(inputId);
-    //get spinner based on dropzone id
     showLoadingSpinner();
     fileInput.click();
-
-    //wait 500 ms and hide spinner
     setTimeout(function () {
         hideLoadingSpinner();
     }, 500);
 }
 
 function handleFileInputChange(event, dropZoneId, jsonInputId, buttonLoadId, buttonCheckId, buttonDownloadId) {
-    const jsonNumber = "json" + dropZoneId.slice(-1);
-    const buttonLoad = document.getElementById(buttonLoadId);
-    const buttonDownload = document.getElementById(buttonDownloadId);
-    const buttonCheck = document.getElementById(buttonCheckId);
-    const jsonInput = document.getElementById(jsonInputId);
-
     if (event.target.files.length === 0) {
         hideLoadingSpinner();
+        return;
     }
 
-    const file = event.target.files[0];
-    if (file) {
-        showLoadingSpinner();
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const jsonData = JSON.parse(e.target.result);
-
-            $(`#${dropZoneId}-text`).text("File loaded: " + file.name);
-            jsonInput.dataset.json = JSON.stringify(jsonData);
-
-            if (jsonInput.dataset.json !== '') {
-                buttonLoad.classList.remove('disabled');
-                buttonLoad.disabled = false;
-                buttonCheck.classList.remove('disabled');
-                buttonCheck.disabled = false;
-                buttonDownload.classList.remove('disabled');
-                buttonDownload.disabled = false;
-            }
-
-            hideLoadingSpinner();
-            checkMergePossible();
-        };
-        reader.readAsText(file);
-
-        //show messege popup to user that json is merged
-        alert('Json is loaded and available to show in viewer or download', 'success');
-
-        //let download merge button blink for 3 seconds        
-        blinkButton(buttonLoadId)
-        blinkButton(buttonDownloadId)
-
-    } else {
-        buttonLoad.classList.add('disabled');
-        buttonLoad.disabled = true;
-    }
-
+    handleImportedFile(event.target.files[0], dropZoneId, jsonInputId, buttonLoadId, buttonCheckId, buttonDownloadId);
 }
 
 function checkMergePossible() {
-    const jsonInput1 = document.getElementById('fileInput1');
-    const jsonInput2 = document.getElementById('fileInput2');
     const buttonMerge = document.getElementById('merge-json');
 
-    //if both inputs hava data and are not undefined enable merge button
     if (jsonInput1.dataset.json !== '' && jsonInput2.dataset.json !== '' && jsonInput1.dataset.json !== undefined && jsonInput2.dataset.json !== undefined) {
         buttonMerge.classList.remove('disabled');
         buttonMerge.disabled = false;
