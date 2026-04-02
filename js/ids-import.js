@@ -442,6 +442,26 @@
         return "Unknown";
     }
 
+    function splitSpecificationName(specificationName, fallbackGroupName) {
+        const rawName = (specificationName || "").trim();
+        const separatorIndex = rawName.indexOf("-");
+
+        if (separatorIndex === -1) {
+            return {
+                groupOfDataObjectsCz: fallbackGroupName,
+                nameCz: rawName || "IDS Import"
+            };
+        }
+
+        const groupName = rawName.slice(0, separatorIndex).trim();
+        const dataObjectName = rawName.slice(separatorIndex + 1).trim();
+
+        return {
+            groupOfDataObjectsCz: groupName || fallbackGroupName,
+            nameCz: dataObjectName || rawName
+        };
+    }
+
     function buildDssFromIds(parsed, options) {
         const model = global.DSS_MODEL;
         const document = model.createEmptyDocument();
@@ -456,6 +476,21 @@
         const defaultGeometricalType = Object.assign({ guid: createGuid() }, model.importerDefaults.graphical.geometricalType);
         const defaultColor = Object.assign({ guid: createGuid() }, model.importerDefaults.graphical.color);
         const defaultPrecision = Object.assign({ guid: createGuid() }, model.importerDefaults.graphical.precision);
+        const stats = {
+            idsTitle: parsed.info && parsed.info.title ? parsed.info.title : "",
+            idsVersion: parsed.info && parsed.info.version ? parsed.info.version : "",
+            specificationsTotal: parsed.specifications.length,
+            applicabilityFacetsTotal: 0,
+            requirementFacetsTotal: 0,
+            propertyRequirementsTotal: 0,
+            mappedProperties: 0,
+            mappedGroups: 0,
+            mappedDataObjects: 0,
+            customEnumsCreated: 0,
+            ifcTypesCreated: 0,
+            unsupportedApplicability: 0,
+            unsupportedRequirements: 0
+        };
 
         document.use = "IDS Import";
         document.version = parsed.info && parsed.info.version ? parsed.info.version : "1.0";
@@ -479,6 +514,7 @@
                 };
                 document.data.IfcTypes.push(row);
                 ifcTypeByKey.set(key, row);
+                stats.ifcTypesCreated++;
             }
             return ifcTypeByKey.get(key);
         }
@@ -497,6 +533,7 @@
                 };
                 document.data.CustomEnums.push(row);
                 enumBySignature.set(signature, row);
+                stats.customEnumsCreated++;
             }
 
             return enumBySignature.get(signature);
@@ -512,6 +549,7 @@
                 };
                 document.data.GroupsOfProperties.push(row);
                 groupByName.set(key, row);
+                stats.mappedGroups++;
             }
 
             return groupByName.get(key);
@@ -557,6 +595,7 @@
 
                 document.data.Properties.push(row);
                 propertyBySignature.set(signature, row);
+                stats.mappedProperties++;
             }
 
             return propertyBySignature.get(signature);
@@ -564,6 +603,10 @@
 
         parsed.specifications.forEach(function (specification) {
             const location = "Specification \"" + specification.name + "\"";
+            const dataObjectNames = splitSpecificationName(
+                specification.name,
+                parsed.info && parsed.info.title ? parsed.info.title : "IDS Import"
+            );
             const propertyRequirements = specification.requirements.filter(function (item) {
                 return item.type === "property";
             });
@@ -573,6 +616,11 @@
             const unsupportedApplicability = specification.applicability.filter(function (item) {
                 return item.type !== "entity";
             });
+            stats.applicabilityFacetsTotal += specification.applicability.length;
+            stats.requirementFacetsTotal += specification.requirements.length;
+            stats.propertyRequirementsTotal += propertyRequirements.length;
+            stats.unsupportedRequirements += unsupportedRequirements.length;
+            stats.unsupportedApplicability += unsupportedApplicability.length;
 
             unsupportedRequirements.forEach(function (facet) {
                 diagnostics.push(createDiagnostic(
@@ -629,8 +677,8 @@
             document.data.DataObjects.push({
                 guid: createGuid(),
                 typeAspectCode: "",
-                nameCz: specification.name,
-                groupOfDataObjectsCz: parsed.info && parsed.info.title ? parsed.info.title : "IDS Import",
+                nameCz: dataObjectNames.nameCz,
+                groupOfDataObjectsCz: dataObjectNames.groupOfDataObjectsCz,
                 source: sourceName,
                 loin: {
                     nongraphical: {
@@ -647,11 +695,13 @@
                     }
                 }
             });
+            stats.mappedDataObjects++;
         });
 
         return {
             jsonData: document,
             diagnostics: diagnostics,
+            stats: stats,
             recoveries: diagnostics.filter(function (entry) {
                 return entry.code.indexOf("RECOVERY") !== -1 || entry.code === "IDS_PROPERTY_MISSING_NAME";
             })
@@ -676,7 +726,8 @@
         return {
             success: fatalErrors.length === 0 || !!converted.jsonData,
             jsonData: converted.jsonData,
-            diagnostics: converted.diagnostics
+            diagnostics: converted.diagnostics,
+            stats: converted.stats
         };
     }
 

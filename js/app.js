@@ -111,9 +111,22 @@ function getStoredImportDiagnostics(jsonInput) {
     }
 }
 
+function getStoredImportStats(jsonInput) {
+    if (!jsonInput || !jsonInput.dataset.importStats) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(jsonInput.dataset.importStats);
+    } catch (error) {
+        return null;
+    }
+}
+
 function clearImportState(jsonInput) {
     jsonInput.dataset.json = '';
     jsonInput.dataset.importDiagnostics = '[]';
+    jsonInput.dataset.importStats = '';
     jsonInput.dataset.importSourceType = '';
     jsonInput.dataset.importFileName = '';
 }
@@ -193,6 +206,7 @@ function parseImportedContent(content, file) {
             success: imported.success && !!imported.jsonData,
             importType,
             jsonData: imported.jsonData,
+            stats: imported.stats || null,
             diagnostics: (imported.diagnostics || []).map(function (entry) {
                 return normalizeDiagnostic(entry, "warning");
             })
@@ -204,6 +218,7 @@ function parseImportedContent(content, file) {
             success: true,
             importType,
             jsonData: JSON.parse(content),
+            stats: null,
             diagnostics: []
         };
     } catch (error) {
@@ -225,8 +240,130 @@ function parseImportedContent(content, file) {
 function storeImportedData(jsonInput, importResult, file) {
     jsonInput.dataset.json = JSON.stringify(importResult.jsonData);
     jsonInput.dataset.importDiagnostics = JSON.stringify(importResult.diagnostics || []);
+    jsonInput.dataset.importStats = importResult.stats ? JSON.stringify(importResult.stats) : '';
     jsonInput.dataset.importSourceType = importResult.importType || "json";
     jsonInput.dataset.importFileName = file && file.name ? file.name : "";
+}
+
+function getOverviewBodyElement(jsonInput) {
+    if (!jsonInput || !jsonInput.id) {
+        return null;
+    }
+
+    const cardIdMap = {
+        fileInput1: "json1-overview",
+        fileInput2: "json2-overview"
+    };
+    const cardId = cardIdMap[jsonInput.id];
+
+    if (!cardId) {
+        return null;
+    }
+
+    const cardElement = document.getElementById(cardId);
+    return cardElement ? cardElement.querySelector(".overview-body") : null;
+}
+
+function countTableEntries(table) {
+    return Array.isArray(table) ? table.length : 0;
+}
+
+function escapeHtml(value) {
+    const element = document.createElement("div");
+    element.textContent = value == null ? "" : String(value);
+    return element.innerHTML;
+}
+
+function getImportedDataOverview(jsonInput) {
+    if (!jsonInput || !jsonInput.dataset.json) {
+        return null;
+    }
+
+    try {
+        const jsonData = JSON.parse(jsonInput.dataset.json);
+        const dataSection = jsonData && typeof jsonData === "object" && jsonData.data && typeof jsonData.data === "object"
+            ? jsonData.data
+            : {};
+        const tableNames = Object.keys(dataSection).filter(function (tableName) {
+            return Array.isArray(dataSection[tableName]);
+        });
+        const totalRows = tableNames.reduce(function (sum, tableName) {
+            return sum + dataSection[tableName].length;
+        }, 0);
+
+        return {
+            fileName: jsonInput.dataset.importFileName || "Unnamed file",
+            sourceType: (jsonInput.dataset.importSourceType || "json").toUpperCase(),
+            tableCount: tableNames.length,
+            totalRows: totalRows,
+            propertyCount: countTableEntries(dataSection.Properties),
+            groupCount: countTableEntries(dataSection.GroupsOfProperties),
+            dataObjectCount: countTableEntries(dataSection.DataObjects),
+            diagnosticsCount: getStoredImportDiagnostics(jsonInput).length,
+            importStats: getStoredImportStats(jsonInput)
+        };
+    } catch (error) {
+        return {
+            parseError: true,
+            fileName: jsonInput.dataset.importFileName || "Loaded file"
+        };
+    }
+}
+
+function renderJsonOverview(jsonInput) {
+    const overviewBody = getOverviewBodyElement(jsonInput);
+    if (!overviewBody) {
+        return;
+    }
+
+    const overview = getImportedDataOverview(jsonInput);
+    if (!overview) {
+        overviewBody.innerHTML = '<div class="overview-placeholder">No file loaded yet.</div>';
+        return;
+    }
+
+    if (overview.parseError) {
+        overviewBody.innerHTML = `
+            <div class="overview-file">${escapeHtml(overview.fileName)}</div>
+            <div class="overview-placeholder">Loaded file could not be summarized.</div>
+        `;
+        return;
+    }
+
+    overviewBody.innerHTML = `
+        <div class="overview-file">${escapeHtml(overview.fileName)}</div>
+        <div class="overview-source">Source: ${escapeHtml(overview.sourceType)}</div>
+        <dl class="overview-stats">
+            <div><dt>Tables</dt><dd>${overview.tableCount}</dd></div>
+            <div><dt>Total rows</dt><dd>${overview.totalRows}</dd></div>
+            <div><dt>Properties</dt><dd>${overview.propertyCount}</dd></div>
+            <div><dt>Groups</dt><dd>${overview.groupCount}</dd></div>
+            <div><dt>DataObjects</dt><dd>${overview.dataObjectCount}</dd></div>
+            <div><dt>Diagnostics</dt><dd>${overview.diagnosticsCount}</dd></div>
+        </dl>
+    `;
+
+    if (overview.sourceType === "IDS" && overview.importStats) {
+        const stats = overview.importStats;
+        overviewBody.innerHTML += `
+            <div class="overview-section-title">IDS Import Coverage</div>
+            <dl class="overview-stats">
+                ${stats.idsTitle ? `<div><dt>IDS title</dt><dd>${escapeHtml(stats.idsTitle)}</dd></div>` : ""}
+                ${stats.idsVersion ? `<div><dt>IDS version</dt><dd>${escapeHtml(stats.idsVersion)}</dd></div>` : ""}
+                <div><dt>Specifications</dt><dd>${stats.specificationsTotal}</dd></div>
+                <div><dt>Applicability facets</dt><dd>${stats.applicabilityFacetsTotal}</dd></div>
+                <div><dt>Requirement facets</dt><dd>${stats.requirementFacetsTotal}</dd></div>
+                <div><dt>Property requirements</dt><dd>${stats.propertyRequirementsTotal}</dd></div>
+                <div><dt>Mapped Properties</dt><dd>${stats.mappedProperties}</dd></div>
+                <div><dt>Mapped Groups</dt><dd>${stats.mappedGroups}</dd></div>
+                <div><dt>Mapped DataObjects</dt><dd>${stats.mappedDataObjects}</dd></div>
+                <div><dt>Created enums</dt><dd>${stats.customEnumsCreated}</dd></div>
+                <div><dt>Created IFC types</dt><dd>${stats.ifcTypesCreated}</dd></div>
+                <div><dt>Unsupported applicability</dt><dd>${stats.unsupportedApplicability}</dd></div>
+                <div><dt>Unsupported requirements</dt><dd>${stats.unsupportedRequirements}</dd></div>
+            </dl>
+        `;
+    }
 }
 
 function renderImportDiagnostics(jsonInput) {
@@ -1244,6 +1381,7 @@ function disableImportButtons(buttonLoadId, buttonCheckId, buttonDownloadId) {
 
 function handleImportFailure(jsonInput, buttonLoadId, buttonCheckId, buttonDownloadId, diagnostics) {
     clearImportState(jsonInput);
+    renderJsonOverview(jsonInput);
     disableImportButtons(buttonLoadId, buttonCheckId, buttonDownloadId);
     checkMergePossible();
     displayErrors(diagnostics, $('#errors-viewer'));
@@ -1268,6 +1406,7 @@ function handleImportedFile(file, dropZoneId, jsonInputId, buttonLoadId, buttonC
         }
 
         storeImportedData(jsonInput, importResult, file);
+        renderJsonOverview(jsonInput);
         $(`#${dropZoneId}-text`).text(`File loaded: ${file.name} (${importResult.importType.toUpperCase()})`);
         enableImportButtons(buttonLoadId, buttonCheckId, buttonDownloadId);
         renderImportDiagnostics(jsonInput);
