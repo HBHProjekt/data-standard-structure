@@ -517,7 +517,7 @@
             return groupByName.get(key);
         }
 
-        function ensureProperty(requirement, specName) {
+        function ensureProperty(requirement) {
             const propertySet = requirement.values.propertySet || "IDS Imported Properties";
             const propertyName = requirement.values.baseName || requirement.values.name || "Unnamed IDS property";
             const ifcTypeName = requirement.attributes.dataType || "IfcLabel";
@@ -552,15 +552,7 @@
                     ifcType: ensureIfcType(ifcTypeName).guid,
                     unit: defaultUnit.guid,
                     customEnum: enumRow ? enumRow.guid : "",
-                    defaultValue: restriction && restriction.kind === "simpleValue" ? restriction.value : "",
-                    externalIdsMetadata: {
-                        propertySet: propertySet,
-                        requirementType: requirement.type,
-                        cardinality: requirement.attributes.cardinality || "",
-                        uri: requirement.attributes.uri || "",
-                        sourceSpecification: specName,
-                        raw: requirement.raw
-                    }
+                    defaultValue: restriction && restriction.kind === "simpleValue" ? restriction.value : ""
                 };
 
                 document.data.Properties.push(row);
@@ -569,8 +561,6 @@
 
             return propertyBySignature.get(signature);
         }
-
-        const specificationSummaries = [];
 
         parsed.specifications.forEach(function (specification) {
             const location = "Specification \"" + specification.name + "\"";
@@ -620,7 +610,7 @@
                 }
 
                 const group = ensureGroup(requirement.values.propertySet);
-                const property = ensureProperty(requirement, specification.name);
+                const property = ensureProperty(requirement);
 
                 if (!group.properties.includes(property.guid)) {
                     group.properties.push(property.guid);
@@ -655,48 +645,9 @@
                         relatedStandards: [],
                         catalogueModel: ""
                     }
-                },
-                externalIdsMetadata: {
-                    identifier: specification.identifier,
-                    ifcVersion: specification.ifcVersion,
-                    description: specification.description,
-                    optionality: specification.optionality,
-                    applicabilityCardinality: specification.applicabilityCardinality,
-                    applicability: specification.applicability,
-                    requirements: specification.requirements,
-                    sourceInfo: parsed.info
                 }
             });
-
-            specificationSummaries.push({
-                name: specification.name,
-                identifier: specification.identifier,
-                ifcVersion: specification.ifcVersion,
-                optionality: specification.optionality,
-                propertyRequirementCount: propertyRequirements.length,
-                unmappedRequirementCount: unsupportedRequirements.length,
-                unmappedApplicabilityCount: unsupportedApplicability.length
-            });
         });
-
-        document.externalMetadata = {
-            idsImport: {
-                sourceFile: sourceName,
-                info: parsed.info,
-                specifications: specificationSummaries,
-                rawSpecifications: parsed.specifications.map(function (specification) {
-                    return {
-                        name: specification.name,
-                        identifier: specification.identifier,
-                        ifcVersion: specification.ifcVersion,
-                        optionality: specification.optionality,
-                        applicabilityCardinality: specification.applicabilityCardinality,
-                        applicability: specification.applicability,
-                        requirements: specification.requirements
-                    };
-                })
-            }
-        };
 
         return {
             jsonData: document,
