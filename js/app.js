@@ -31,6 +31,10 @@ fetch('structure/structure.json')
 
 
 let resourceJsonData = null;
+let activeStandardInput = null;
+let activeStandardView = null;
+const importDiagnosticCache = new WeakMap();
+const validationCache = new WeakMap();
 const changedValues = new Set();
 let ctrlKeyPressed = false;
 
@@ -83,6 +87,7 @@ function normalizeDiagnostic(entry, fallbackSeverity = "error") {
 
 function createValidationDiagnostics(errors) {
     return errors.map(function (error) {
+        if (error && typeof error === 'object') return normalizeDiagnostic(error);
         return normalizeDiagnostic({
             severity: "error",
             code: "DSS_VALIDATION",
@@ -98,9 +103,14 @@ function getStoredImportDiagnostics(jsonInput) {
     }
 
     try {
-        return JSON.parse(jsonInput.dataset.importDiagnostics).map(function (entry) {
+        const text = jsonInput.dataset.importDiagnostics;
+        const previous = importDiagnosticCache.get(jsonInput);
+        if (previous && previous.text === text) return previous.diagnostics;
+        const diagnostics = JSON.parse(text).map(function (entry) {
             return normalizeDiagnostic(entry, "warning");
         });
+        importDiagnosticCache.set(jsonInput, { text, diagnostics });
+        return diagnostics;
     } catch (error) {
         return [normalizeDiagnostic({
             severity: "warning",
@@ -124,6 +134,20 @@ function getStoredImportStats(jsonInput) {
 }
 
 function clearImportState(jsonInput) {
+    if (resourceJsonData === jsonInput) resourceJsonData = null;
+    if (activeStandardInput === jsonInput) {
+        activeStandardInput = null;
+        activeStandardView = null;
+        const root = document.getElementById('standard-viewer'); root.hidden = false;
+        window.DSS_VIEWER.renderEmpty(root);
+        document.getElementById('json-viewer').replaceChildren(); document.getElementById('json-viewer').hidden = true;
+        document.getElementById('dss-filter').replaceChildren(); document.getElementById('dss-filter').hidden = true;
+        document.getElementById('standard-back-browser').hidden = true;
+        document.getElementById('download-changes').hidden = true;
+        document.getElementById('standard-open-editor').hidden = false;
+    }
+    window.DSS_DOCUMENTS.clear(jsonInput);
+    importDiagnosticCache.delete(jsonInput);
     jsonInput.dataset.json = '';
     jsonInput.dataset.importDiagnostics = '[]';
     jsonInput.dataset.importStats = '';
@@ -139,8 +163,15 @@ function getCombinedDiagnostics(jsonInput) {
     }
 
     try {
-        const jsonData = JSON.parse(jsonInput.dataset.json);
-        return diagnostics.concat(createValidationDiagnostics(checkJsonValidity(jsonData)));
+        const jsonData = window.DSS_DOCUMENTS.read(jsonInput);
+        const cacheable = jsonData && typeof jsonData === 'object';
+        let checked = cacheable ? validationCache.get(jsonData) : null;
+        if (!checked || checked.references !== configDict) { checked = { references: configDict, diagnostics: checkJsonValidity(jsonData, { structured: true }) }; if (cacheable) validationCache.set(jsonData, checked); }
+        const validation = createValidationDiagnostics(checked.diagnostics).map(entry => ({
+            ...entry, details: { ...(entry.details || {}), sourceInputId: jsonInput.id,
+                sourceLabel: jsonInput.dataset.importFileName || ({ fileInput1: 'DSS1', fileInput2: 'DSS2', fileInputMerged: 'Sloučený standard' }[jsonInput.id] || 'Standard') }
+        }));
+        return diagnostics.concat(validation);
     } catch (error) {
         return diagnostics.concat([
             normalizeDiagnostic({
@@ -238,11 +269,14 @@ function parseImportedContent(content, file) {
 }
 
 function storeImportedData(jsonInput, importResult, file) {
-    jsonInput.dataset.json = JSON.stringify(importResult.jsonData);
+    const refreshViewer = activeStandardInput === jsonInput;
+    if (resourceJsonData === jsonInput) resourceJsonData = null;
+    window.DSS_DOCUMENTS.write(jsonInput, importResult.jsonData);
     jsonInput.dataset.importDiagnostics = JSON.stringify(importResult.diagnostics || []);
     jsonInput.dataset.importStats = importResult.stats ? JSON.stringify(importResult.stats) : '';
     jsonInput.dataset.importSourceType = importResult.importType || "json";
     jsonInput.dataset.importFileName = file && file.name ? file.name : "";
+    if (refreshViewer) openStandardBrowser(jsonInput);
 }
 
 function getOverviewBodyElement(jsonInput) {
@@ -280,7 +314,7 @@ function getImportedDataOverview(jsonInput) {
     }
 
     try {
-        const jsonData = JSON.parse(jsonInput.dataset.json);
+        const jsonData = window.DSS_DOCUMENTS.read(jsonInput);
         const dataSection = jsonData && typeof jsonData === "object" && jsonData.data && typeof jsonData.data === "object"
             ? jsonData.data
             : {};
@@ -780,107 +814,67 @@ function removeSelectedButton() {
 
 
 
-$('#load-json1').click(function () {
-    // Add the confirmation
-    const userConfirmed = window.confirm('Loading the file to the viewer may take some time. Are you sure you want to proceed?');
-
-    // If the user confirmed, proceed with loading the JSON
-    if (userConfirmed) {
-        showLoadingSpinner();
-
-        setTimeout(() => {
-            try {
-                const jsonData = JSON.parse(jsonInput1.dataset.json);
-
-                if (resourceJsonData !== null) {
-                    saveModifiedJson(resourceJsonData);
-                }
-                resourceJsonData = jsonInput1;
-
-                displayJson("json1", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
-
-                removeSelectedButton();
-                this.classList.add("selected");
-            } catch (error) {
-                alert('Invalid JSON data: ' + error.message);
+function openStandardBrowser(input, button, notice) {
+    try {
+        if (resourceJsonData) saveModifiedJson(resourceJsonData);
+        resourceJsonData = null;
+        const doc = window.DSS_DOCUMENTS.read(input);
+        const viewState = activeStandardInput === input ? activeStandardView?.state : undefined;
+        activeStandardInput = input;
+        document.getElementById('standard-viewer').hidden = false;
+        document.getElementById('json-viewer').hidden = true;
+        document.getElementById('json-viewer').replaceChildren();
+        document.getElementById('dss-filter').hidden = true;
+        document.getElementById('dss-filter').replaceChildren();
+        document.getElementById('standard-back-browser').hidden = true;
+        document.getElementById('download-changes').hidden = true;
+        document.getElementById('standard-open-editor').hidden = false;
+        activeStandardView = window.DSS_VIEWER.render(document.getElementById('standard-viewer'), doc, {
+            label: input.dataset.importFileName || (input === fileInputMerged ? 'Sloučený standard' : 'Standard'),
+            viewState,
+            notice,
+            getAutomationLibrary: () => window.DSS_VIEWER.automationCatalog([jsonInput1, jsonInput2, fileInputMerged].filter(source => source.dataset.json).map(source => window.DSS_DOCUMENTS.read(source))),
+            onChange: (next, change) => {
+                // Defaults use the in-place editor; other edits replace the
+                // selected definition and rebuild the viewer's cached indexes.
+                if (!next) { window.DSS_DOCUMENTS.write(input, doc); return; }
+                if (window.DSS_DOCUMENTS.read(input) !== doc) throw new Error('Standard se mezitím změnil. Zavřete výběr a otevřete vlastnost znovu.');
+                window.DSS_DOCUMENTS.write(input, next);
+                for (const entry of change.changes) changedValues.add(JSON.stringify({ ...entry, source: input.dataset.importFileName || input.id }));
+                window.DSS_MATCHING.refreshPropertyCommands(doc, next);
+                openStandardBrowser(input, null, (change.kind === 'groupAssignment' ? 'Skupiny přiřazeny objektům: ' + change.objectsChanged + ', nových vazeb: ' + change.linksAdded + '.' : change.kind === 'groupLibrary' ? `Přidáno skupin: ${change.counts.groups}, vlastností: ${change.counts.properties}.` : change.kind === 'propertyEnumeration' ? 'Přiřazení číselníku uloženo.' : change.kind === 'enumerationImport' ? `Import číselníků: přidáno ${change.added}, nahrazeno ${change.replaced}, ponecháno ${change.skipped}.` : change.kind === 'enumeration' ? 'Číselník uložen.' : change.kind === 'typeAspect' ? 'Typový aspekt uložen.' : 'Přiřazení automatu uloženo.') + ' Upravený standard stáhnete tlačítkem Stáhnout.');
             }
-            finally {
-                hideLoadingSpinner();
-            }
+        });
+        removeSelectedButton();
+        const selectedButton = button || document.getElementById(input === jsonInput1 ? 'load-json1' : input === jsonInput2 ? 'load-json2' : 'load-json-merged');
+        if (selectedButton) selectedButton.classList.add('selected');
+    } catch (error) { alert('Standard nelze zobrazit: ' + error.message); }
+}
 
-        }, 0);
-    } else {
-        console.log('User cancelled loading the file to the viewer.');
-    }
-});
+$('#load-json1').click(function () { openStandardBrowser(jsonInput1, this); });
+$('#load-json2').click(function () { openStandardBrowser(jsonInput2, this); });
+$('#load-json-merged').click(function () { openStandardBrowser(fileInputMerged, this); });
 
-$('#load-json2').click(function () {
-    // Add the confirmation
-    const userConfirmed = window.confirm('Loading the file to the viewer may take some time. Are you sure you want to proceed?');
-
-    // If the user confirmed, proceed with loading the JSON
-    if (userConfirmed) {
-        showLoadingSpinner();
-
-        setTimeout(() => {
-            try {
-                const jsonData = JSON.parse(jsonInput2.dataset.json);
-
-                if (resourceJsonData !== null) {
-                    saveModifiedJson(resourceJsonData);
-                }
-                resourceJsonData = jsonInput2;
-                displayJson("json2", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
-
-                removeSelectedButton();
-                this.classList.add("selected");
-            } catch (error) {
-                alert('Invalid JSON data: ' + error.message);
-            }
-            finally {
-                hideLoadingSpinner();
-            }
-
-        }, 0);
-    } else {
-        console.log('User cancelled loading the file to the viewer.');
-    }
-});
-
-$('#load-json-merged').click(function () {
-    // Add the confirmation
-    const userConfirmed = window.confirm('Loading the file to the viewer may take some time. Are you sure you want to proceed?');
-
-    // If the user confirmed, proceed with loading the JSON
-    if (userConfirmed) {
-        showLoadingSpinner();
-
-        setTimeout(() => {
-            try {
-
-                const jsonData = JSON.parse(fileInputMerged.dataset.json);
-
-                if (resourceJsonData !== null) {
-                    saveModifiedJson(resourceJsonData);
-                }
-                resourceJsonData = fileInputMerged;
-                displayJson("merged", jsonData, $('#json-viewer'), JSON.parse(JSON.stringify(jsonData)), []);
-
-                removeSelectedButton();
-                this.classList.add("selected");
-            } catch (error) {
-                alert('Invalid JSON data: ' + error.message);
-            }
-            finally {
-                hideLoadingSpinner();
-            }
-
-        }, 0);
-    } else {
-        console.log('User cancelled loading the file to the viewer.');
-    }
-});
-
+document.getElementById('standard-open-editor').onclick = () => {
+    if (!activeStandardInput) { alert('Nejdřív vyberte DSS1, DSS2 nebo výsledek.'); return; }
+    showLoadingSpinner();
+    setTimeout(() => {
+        try {
+            const doc = window.DSS_DOCUMENTS.read(activeStandardInput);
+            resourceJsonData = activeStandardInput;
+            document.getElementById('standard-viewer').hidden = true;
+            document.getElementById('json-viewer').hidden = false;
+            document.getElementById('dss-filter').hidden = false;
+            document.getElementById('standard-back-browser').hidden = false;
+            document.getElementById('download-changes').hidden = false;
+            document.getElementById('standard-open-editor').hidden = true;
+            const origin = activeStandardInput === jsonInput1 ? 'json1' : activeStandardInput === jsonInput2 ? 'json2' : 'merged';
+            displayJson(origin, doc, $('#json-viewer'), JSON.parse(JSON.stringify(doc)), []);
+        } catch (error) { alert('Editor nelze otevřít: ' + error.message); }
+        finally { hideLoadingSpinner(); }
+    }, 0);
+};
+document.getElementById('standard-back-browser').onclick = () => { if (activeStandardInput) openStandardBrowser(activeStandardInput); };
 
 function removeDisabled(elementId) {
     const button = document.getElementById(elementId);
@@ -890,22 +884,32 @@ function removeDisabled(elementId) {
 
 //merge file
 $('#merge-json').click(function () {
-
+    let mergeSucceeded = false;
     try {
 
         showLoadingSpinner();
-        const jsonData1 = JSON.parse(jsonInput1.dataset.json);
-        const jsonData2 = JSON.parse(jsonInput2.dataset.json);
+        if (resourceJsonData === jsonInput1 || resourceJsonData === jsonInput2) saveModifiedJson(resourceJsonData);
+        const jsonData1 = window.DSS_DOCUMENTS.read(jsonInput1);
+        const jsonData2 = window.DSS_DOCUMENTS.read(jsonInput2);
         //check if both jsons are valid
         if (jsonData1 && jsonData2) {
-            const mergedJson = mergeJson(jsonData1, jsonData2);
-            fileInputMerged.dataset.json = JSON.stringify(mergedJson);
+            const prepared = window.DSS_MATCHING.prepare(jsonData1, jsonData2);
+            const mergedJson = mergeJson(prepared.target, prepared.source);
+            mergedJson.mergeReport = prepared.report;
+            document.getElementById('matching-result-report').textContent = prepared.report.message;
+            if (resourceJsonData === fileInputMerged) resourceJsonData = null;
+            window.DSS_DOCUMENTS.write(fileInputMerged, mergedJson);
             fileInputMerged.dataset.importDiagnostics = '[]';
             fileInputMerged.dataset.importSourceType = 'merged';
+            if (activeStandardInput === fileInputMerged) openStandardBrowser(fileInputMerged);
+            const outputBytes = new Blob([JSON.stringify(mergedJson, null, 2)]).size;
+            const outputSize = outputBytes < 1024 * 1024 ? (outputBytes / 1024).toLocaleString('cs', { maximumFractionDigits: 1 }) + ' kB' : (outputBytes / (1024 * 1024)).toLocaleString('cs', { maximumFractionDigits: 2 }) + ' MB';
+            document.getElementById('matching-result-size').textContent = `Výsledek: ${outputSize} · ${(mergedJson.data.DataObjects || []).length} objektů · ${(mergedJson.data.Properties || []).length} vlastností`;
 
             removeDisabled('load-json-merged');
             removeDisabled('download-merge');
             removeDisabled('check-json-merged');
+            mergeSucceeded = true;
         }
         else {
             alert('Invalid JSON data');
@@ -917,6 +921,7 @@ $('#merge-json').click(function () {
         hideLoadingSpinner();
     }
 
+    if (!mergeSucceeded) return;
     const button = document.getElementById('load-json-merged');
 
     if (fileInputMerged.dataset.json === '') {
@@ -955,6 +960,10 @@ function mergeDeep(target, source) {
     Object.keys(source).forEach((key) => {
         const targetValue = target[key];
         const sourceValue = source[key];
+        if (key === 'propertyDefaults' && Array.isArray(sourceValue)) {
+            window.DSS_MODEL.mergePropertyDefaults(target, source);
+            return;
+        }
         if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
             const seen = new Set(targetValue.map(JSON.stringify));
             const mergedArray = targetValue.concat(sourceValue.filter(item => {
@@ -1080,12 +1089,12 @@ function reconstructJson(node) {
 }
 
 function saveModifiedJson(jsonInput) {
+    if (resourceJsonData !== jsonInput || document.getElementById('json-viewer').hidden) return;
     if (jsonInput.dataset.json !== "") {
         try {
             const jsonViewer = $("#json-viewer");
             const modifiedJson = reconstructJson(jsonViewer);
-            jsonInput.dataset.json = JSON.stringify(modifiedJson);
-            console.log("Saving modified JSON:", modifiedJson);
+            window.DSS_DOCUMENTS.write(jsonInput, modifiedJson);
         } catch (error) {
             console.error("Failed to save modified JSON:", error);
         }
@@ -1109,9 +1118,8 @@ $('#download-merge').click(function () {
         if (resourceJsonData !== null) {
             saveModifiedJson(resourceJsonData);
         }
-        resourceJsonData = fileInputMerged;
 
-        const jsonData = JSON.parse(fileInputMerged.dataset.json);
+        const jsonData = window.DSS_DOCUMENTS.read(fileInputMerged);
         const jsonContent = JSON.stringify(jsonData, null, 2);
         downloadJsonFile(jsonContent, "merged.json");
     } catch (error) {
@@ -1125,9 +1133,8 @@ $('#download-json1').click(function () {
         if (resourceJsonData !== null) {
             saveModifiedJson(resourceJsonData);
         }
-        resourceJsonData = jsonInput1;
 
-        const jsonData = JSON.parse(jsonInput1.dataset.json);
+        const jsonData = window.DSS_DOCUMENTS.read(jsonInput1);
         const jsonContent = JSON.stringify(jsonData, null, 2);
         downloadJsonFile(jsonContent, "json1.json");
     } catch (error) {
@@ -1141,9 +1148,8 @@ $('#download-json2').click(function () {
         if (resourceJsonData !== null) {
             saveModifiedJson(resourceJsonData);
         }
-        resourceJsonData = jsonInput2;
 
-        const jsonData = JSON.parse(jsonInput2.dataset.json);
+        const jsonData = window.DSS_DOCUMENTS.read(jsonInput2);
         const jsonContent = JSON.stringify(jsonData, null, 2);
         downloadJsonFile(jsonContent, "json2.json");
     } catch (error) {
@@ -1195,130 +1201,45 @@ $('#check-json-merged').click(function () {
     }
 });
 
-function checkJsonValidity(json) {
-    if (!json || typeof json !== "object") {
-        return ["JSON root must be an object."];
-    }
-
-    if (!json.data || typeof json.data !== "object") {
-        return ["JSON must contain a data object."];
-    }
-
-    const guids = new Set();
-    const errors = [];
-    const tables = dssModel.tables || {};
-
-    for (const tableName in tables) {
-        if (!Object.prototype.hasOwnProperty.call(json.data, tableName)) {
-            continue;
-        }
-
-        if (!Array.isArray(json.data[tableName])) {
-            errors.push(`Invalid table definition: ${tableName} must be an array.`);
-            continue;
-        }
-
-        for (const obj of json.data[tableName]) {
-            if (typeof obj !== "object" || obj === null) {
-                errors.push(`Invalid table row: ${tableName} contains a non-object value.`);
-                continue;
-            }
-
-            for (const field of tables[tableName].requiredFields || []) {
-                if (!Object.prototype.hasOwnProperty.call(obj, field)) {
-                    errors.push(`Missing required field '${field}' in table ${tableName}.`);
-                }
-            }
-        }
-    }
-
-    // Collect all the GUIDs from the JSON object
-    for (const table in json.data) {
-        if (json.data.hasOwnProperty(table)) {
-            const tableData = json.data[table];
-            if (!Array.isArray(tableData)) {
-                continue;
-            }
-            for (const obj of tableData) {
-                if (obj && typeof obj === "object" && isGuid(obj.guid)) {
-                    //add guid and table name to set of guids
-                    guids.add(obj.guid);
-                }
-                else {
-                    errors.push(`Invalid GUID value: Table ${table}, object GUID ${obj && typeof obj === "object" ? obj.guid : obj}`);
-                }
-
-            }
-        }
-    }
-
-    // Check that all the GUID references in the JSON object exist
-    for (const table in json.data) {
-        if (json.data.hasOwnProperty(table)) {
-
-            const tableData = json.data[table];
-            if (!Array.isArray(tableData)) {
-                continue;
-            }
-            for (const objIndex in tableData) {
-                if (tableData.hasOwnProperty(objIndex)) {
-                    const obj = tableData[objIndex];
-                    if (!obj || typeof obj !== "object") {
-                        continue;
-                    }
-                    for (const prop in obj) {
-                        if (obj.hasOwnProperty(prop)) {
-                            const value = obj[prop];
-                            const guid = obj.hasOwnProperty('guid') ? obj.guid : null;
-                            checkGUIDRecursively(value, guids, errors, table, objIndex, prop, guid);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return errors;
-}
-
-function checkGUIDRecursively(value, guids, errors, table, objIndex, prop, guid) {
-
-    if (configDict.hasOwnProperty(prop)) {
-        if (Array.isArray(value)) {
-            for (const item of value) {
-                if (isGuid(item)) {
-                    if (!guids.has(item)) {
-                        errors.push(`Invalid GUID reference: ${item} has no reference. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
-                    }
-                } else {
-                    errors.push(`Invalid GUID definition: '${item}' is not GUID. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
-                }
-            }
-        } else {
-            if (isGuid(value)) {
-                if (!guids.has(value)) {
-                    errors.push(`Invalid GUID reference: ${value} has no reference. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
-                }
-            } else {
-                if (!(prop === 'customEnum' && value === '') && !(prop === 'unit' && table === 'Units')) {
-                    errors.push(`Invalid GUID definition: '${value}' is not GUID. Table ${table}, object index ${objIndex}, object guid ${guid}, property ${prop}`);
-                }
-            }
-        }
-    } else if (typeof value === 'object' && value !== null) {
-        for (const key in value) {
-            if (value.hasOwnProperty(key)) {
-                const element = value[key];
-                const guidUnder = value.hasOwnProperty('guid') ? value.guid : null;
-                checkGUIDRecursively(element, guids, errors, table, objIndex, key, guidUnder);
-            }
-        }
-    }
+function checkJsonValidity(json, options = {}) {
+    const diagnostics = window.DSS_VALIDATOR.validate(json, { references: configDict });
+    return options.structured ? diagnostics : diagnostics.filter(entry => entry.severity === 'error').map(entry => entry.details && entry.details.technicalMessage || entry.message);
 }
 
 function isGuid(value) {
-    const guidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    return typeof value === "string" && guidPattern.test(value);
+    return typeof value === "string" && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
+}
+
+function showDiagnosticRecord(details) {
+    let dialog = document.getElementById('diagnostic-record-dialog');
+    if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'diagnostic-record-dialog';
+        dialog.className = 'diagnostic-record-dialog';
+        document.body.append(dialog);
+    }
+    dialog.replaceChildren();
+    const append = (tag, text) => { const node = document.createElement(tag); node.textContent = text; dialog.append(node); return node; };
+    const heading = append('h2', details.sourceLabel + ' → ' + details.table + ' → ' + details.rowName);
+    heading.id = 'diagnostic-record-title'; dialog.setAttribute('aria-labelledby', heading.id);
+    const close = append('button', 'Zavřít'); close.type = 'button'; close.onclick = () => dialog.close();
+    append('p', details.hint);
+    append('p', 'Přesná cesta k problému: ' + details.path);
+    try {
+        const input = document.getElementById(details.sourceInputId);
+        const json = window.DSS_DOCUMENTS.read(input);
+        const table = json.data[details.table] || [];
+        let row = table[details.rowIndex];
+        if (details.rowGuid && (!row || row.guid !== details.rowGuid)) {
+            const found = table.filter(item => item && item.guid === details.rowGuid);
+            if (found.length !== 1) throw new Error('Záznam se od poslední kontroly změnil. Spusťte kontrolu znovu.');
+            row = found[0];
+        }
+        if (row === undefined) throw new Error('Záznam už na této pozici není. Spusťte kontrolu znovu.');
+        append('p', 'Náhled záznamu je pouze pro čtení. Změny proveďte ve standardu v uvedené tabulce a poli.');
+        append('pre', JSON.stringify(row, null, 2));
+    } catch (error) { append('p', 'Záznam nelze načíst: ' + error.message); }
+    if (!dialog.open) dialog.showModal();
 }
 
 function displayErrors(errors, parentElement) {
@@ -1329,7 +1250,7 @@ function displayErrors(errors, parentElement) {
     });
 
     if (normalized.length === 0) {
-        const noErrorsElement = $("<div>No errors found</div>");
+        const noErrorsElement = $("<div>Kontrola nenašla žádné chyby ani varování.</div>");
         parentElement.append(noErrorsElement);
         return;
     }
@@ -1351,21 +1272,60 @@ function displayErrors(errors, parentElement) {
         }
 
         const section = $(`<div class="diagnostic-group diagnostic-group-${severity}"></div>`);
-        section.append(`<h4>${severity.toUpperCase()} (${groups[severity].length})</h4>`);
-
-        groups[severity].forEach(function (entry) {
-            const location = entry.location ? `<div class="diagnostic-location">${entry.location}</div>` : "";
-            const code = entry.code ? `<div class="diagnostic-code">${entry.code}</div>` : "";
-            const details = entry.details ? `<pre class="diagnostic-details">${JSON.stringify(entry.details, null, 2)}</pre>` : "";
-            section.append(`
-                <div class="error-message error-message-${severity}">
-                    ${location}
-                    <div class="diagnostic-message">${entry.message}</div>
-                    ${code}
-                    ${details}
-                </div>
-            `);
-        });
+        const severityLabel = { error: 'Chyby', warning: 'Varování', info: 'Informace' }[severity];
+        section.append($('<h4></h4>').text(`${severityLabel} (${groups[severity].length})`));
+        const byType = new Map();
+        for (const entry of groups[severity]) {
+            const key = JSON.stringify([entry.code, entry.message, entry.details && entry.details.facetType]);
+            if (!byType.has(key)) byType.set(key, []);
+            byType.get(key).push(entry);
+        }
+        for (const entries of byType.values()) {
+            const first = entries[0];
+            const detail = $('<details class="diagnostic-summary"></details>');
+            const facet = first.details && first.details.facetType;
+            const descriptions = {
+                IDS_APPLICABILITY_NOT_MAPPED: 'Omezení převodu: podmínka výběru je zachovaná v metadatech IDS.',
+                IDS_REQUIREMENT_NOT_MAPPED: 'Omezení převodu: požadavek je zachovaný v metadatech IDS.'
+            };
+            detail.append($('<summary></summary>').text(`${entries.length}× ${descriptions[first.code] || first.message}${facet ? ' (' + facet + ')' : ''}`));
+            if (severity === 'error') detail.attr('open', true);
+            detail.append($('<div class="diagnostic-code"></div>').text(first.code));
+            const content = $('<div></div>'); detail.append(content);
+            function appendEntry(entry) {
+                const item = $(`<div class="error-message error-message-${severity}"></div>`);
+                const info = entry.details || {};
+                item.append($('<div class="diagnostic-location"></div>').text([info.sourceLabel, entry.location].filter(Boolean).join(' → ')));
+                item.append($('<div class="diagnostic-message"></div>').text(entry.message));
+                if (info.hint) item.append($('<p class="diagnostic-hint"></p>').text('Kde hledat a co ověřit: ' + info.hint));
+                if (info.usedBy && info.usedBy.length) {
+                    const owners = info.usedBy.map(obj => `„${obj.name}“${obj.group ? ' (' + obj.group + ')' : ''}${obj.typeAspectCode ? ' ' + obj.typeAspectCode : ''}`);
+                    item.append($('<p class="diagnostic-owners"></p>').text('Týká se objektů: ' + owners.join(', ') + (info.affectedObjects > owners.length ? ` a dalších ${info.affectedObjects - owners.length}.` : '.')));
+                } else if (info.table && info.table !== 'DataObjects') {
+                    item.append($('<p class="diagnostic-owners"></p>').text('U této položky nebylo dohledáno použití datovým objektem; může jít o samostatnou definici v číselníku.'));
+                }
+                if (info.sourceInputId && info.table && typeof info.rowIndex === 'number') {
+                    item.append($('<button type="button" class="diagnostic-open-record">Ukázat záznam</button>').on('click', () => showDiagnosticRecord(info)));
+                }
+                if (entry.details) {
+                    const technical = $('<details></details>'); technical.append($('<summary>Technické podrobnosti</summary>'));
+                    if (info.path) technical.append($('<code class="diagnostic-path"></code>').text(info.path));
+                    if (info.actual !== undefined) technical.append($('<p></p>').text('Aktuální hodnota: ' + info.actual));
+                    technical.append($('<pre class="diagnostic-details"></pre>').text(JSON.stringify(entry.details, null, 2))); item.append(technical);
+                }
+                content.append(item);
+            }
+            entries.slice(0, 30).forEach(appendEntry);
+            if (entries.length > 30 && severity === 'error') {
+                let shown = 30;
+                const more = $('<button type="button">Ukázat dalších 30 chyb</button>').on('click', () => {
+                    entries.slice(shown, shown + 30).forEach(appendEntry); shown += 30;
+                    if (shown >= entries.length) more.remove();
+                });
+                detail.append(more);
+            } else if (entries.length > 30) detail.append($('<p></p>').text(`Zobrazeno prvních 30 z ${entries.length} opakovaných hlášení tohoto typu.`));
+            section.append(detail);
+        }
 
         parentElement.append(section);
     });
@@ -1413,9 +1373,12 @@ function handleImportedFile(file, dropZoneId, jsonInputId, buttonLoadId, buttonC
         hideLoadingSpinner();
         checkMergePossible();
 
-        const diagnosticCount = getStoredImportDiagnostics(jsonInput).length;
         const importLabel = importResult.importType === "ids" ? "IDS" : "JSON";
-        alert(`${importLabel} import finished${diagnosticCount > 0 ? ` with ${diagnosticCount} diagnostics` : ""}.`);
+        const diagnostics = getCombinedDiagnostics(jsonInput);
+        const errorCount = diagnostics.filter(x => x.severity === 'error').length;
+        const warningCount = diagnostics.filter(x => x.severity === 'warning').length;
+        const infoCount = diagnostics.filter(x => x.severity === 'info').length;
+        alert(`${importLabel}: import dokončen. Chyby: ${errorCount}, varování: ${warningCount}, informace: ${infoCount}. Podrobnosti najdete v Kontrole importu.`);
         blinkButton(buttonLoadId);
         blinkButton(buttonDownloadId);
     };

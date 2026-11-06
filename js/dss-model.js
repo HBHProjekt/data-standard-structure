@@ -45,7 +45,7 @@
         },
         CustomEnums: {
             identityField: "guid",
-            requiredFields: ["guid", "name", "values"],
+            requiredFields: ["guid", "values"],
             displayField: "name"
         },
         GraphicalCatalogue: {
@@ -115,11 +115,46 @@
         };
     }
 
+    function hbhCommands(property) {
+        const commands = [];
+        for (const [key, value] of Object.entries(property || {})) if (key.toLowerCase() === 'namehbh') {
+            for (const command of Array.isArray(value) ? value : [value]) if (typeof command === 'string' && command.trim()) commands.push(command.trim());
+        }
+        return [...new Set(commands)];
+    }
+
+    function propertyDefault(object, property) {
+        return (object.propertyDefaults || []).find(entry => entry.property === property);
+    }
+    function setPropertyDefault(object, property, value) {
+        const entries = (object.propertyDefaults || []).filter(entry => entry.property !== property);
+        if (value !== undefined) entries.push({ property, defaultValue: value });
+        if (entries.length) object.propertyDefaults = entries;
+        else delete object.propertyDefaults;
+    }
+    function mergePropertyDefaults(target, source, propertyMap = new Map()) {
+        for (const entry of source.propertyDefaults || []) {
+            const property = propertyMap.get(entry.property) || entry.property;
+            const existing = propertyDefault(target, property);
+            if (existing && JSON.stringify(existing.defaultValue) !== JSON.stringify(entry.defaultValue)) {
+                throw new Error(`Rozdílné výchozí hodnoty pro objekt „${target.nameCz || target.guid}“ a vlastnost ${property}. Sjednoťte je v prohlížeči vstupních standardů.`);
+            }
+            if (!existing) {
+                target.propertyDefaults = target.propertyDefaults || [];
+                target.propertyDefaults.push({ ...entry, property });
+            }
+        }
+    }
+
     global.DSS_MODEL = {
         version: "0.1",
         referenceFields,
         tables,
         importerDefaults,
-        createEmptyDocument
+        createEmptyDocument,
+        hbhCommands,
+        propertyDefault,
+        setPropertyDefault,
+        mergePropertyDefaults
     };
 })(window);

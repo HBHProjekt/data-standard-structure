@@ -108,8 +108,7 @@
             patterns: [],
             bounds: [],
             lengths: [],
-            unsupportedFacets: [],
-            raw: xmlElementToObject(restriction)
+            unsupportedFacets: []
         };
 
         for (const facet of Array.from(restriction.children || [])) {
@@ -150,6 +149,7 @@
             }
         }
 
+        if (result.unsupportedFacets.length) result.raw = xmlElementToObject(restriction);
         return result;
     }
 
@@ -157,8 +157,7 @@
         const parsed = {
             type: element.localName,
             attributes: {},
-            values: {},
-            raw: xmlElementToObject(element)
+            values: {}
         };
 
         for (const attribute of Array.from(element.attributes || [])) {
@@ -180,6 +179,11 @@
             parsed.values[child.localName] = xmlElementToObject(child);
         }
 
+        // Known facets are already represented above. Preserve XML only where
+        // the parser cannot represent a value, avoiding another complete copy.
+        if (!['entity', 'property', 'classification', 'attribute', 'material', 'partOf'].includes(parsed.type) || Object.values(parsed.values).some(value => value === null)) {
+            parsed.raw = xmlElementToObject(element);
+        }
         return parsed;
     }
 
@@ -216,8 +220,7 @@
             optionality: "required",
             applicabilityCardinality: null,
             applicability: [],
-            requirements: [],
-            raw: xmlElementToObject(specElement)
+            requirements: []
         };
 
         if (!applicabilityElement) {
@@ -561,14 +564,15 @@
             const ifcTypeName = requirement.attributes.dataType || "IfcLabel";
             const dssTypeKey = mapIdsDataType(ifcTypeName);
             const restriction = requirement.values.value;
-            const enumRow = restriction && restriction.enumerations.length > 0 ? ensureCustomEnum(propertyName, restriction.enumerations) : null;
+            const enumRow = restriction && restriction.enumerations && restriction.enumerations.length > 0 ? ensureCustomEnum(propertyName, restriction.enumerations) : null;
             const signature = [
                 propertySet,
                 propertyName,
                 ifcTypeName,
                 requirement.attributes.cardinality || "",
                 enumRow ? enumRow.guid : "",
-                restriction && restriction.kind === "simpleValue" ? restriction.value : ""
+                restriction && restriction.kind === "simpleValue" ? restriction.value : "",
+                JSON.stringify(requirement)
             ].join("|");
 
             if (!propertyBySignature.has(signature)) {
@@ -592,6 +596,7 @@
                     customEnum: enumRow ? enumRow.guid : "",
                     defaultValue: restriction && restriction.kind === "simpleValue" ? restriction.value : ""
                 };
+                row.ids = { propertySet: propertySet, requirement: requirement };
 
                 document.data.Properties.push(row);
                 propertyBySignature.set(signature, row);
@@ -657,7 +662,16 @@
                     ));
                 }
 
-                const group = ensureGroup(requirement.values.propertySet);
+                // Each specification owns its property list. Sharing a Pset row would
+                // otherwise add requirements from unrelated specifications.
+                const groupKey = specification.identifier + "|" + stats.mappedDataObjects + "|" + (requirement.values.propertySet || "IDS Imported Properties");
+                if (!groupByName.has(groupKey)) {
+                    const row = { guid: createGuid(), name: requirement.values.propertySet || "IDS Imported Properties", properties: [] };
+                    groupByName.set(groupKey, row);
+                    document.data.GroupsOfProperties.push(row);
+                    stats.mappedGroups++;
+                }
+                const group = groupByName.get(groupKey);
                 const property = ensureProperty(requirement);
 
                 if (!group.properties.includes(property.guid)) {
@@ -680,6 +694,14 @@
                 nameCz: dataObjectNames.nameCz,
                 groupOfDataObjectsCz: dataObjectNames.groupOfDataObjectsCz,
                 source: sourceName,
+                ids: {
+                    identifier: specification.identifier,
+                    name: specification.name,
+                    ifcVersion: specification.ifcVersion,
+                    applicability: specification.applicability,
+                    requirements: specification.requirements,
+                    optionality: specification.optionality
+                },
                 loin: {
                     nongraphical: {
                         groupsOfProperties: groupGuids,

@@ -2,6 +2,8 @@
 <html>
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>DSS</title>
     <link rel="stylesheet" type="text/css" href="css/styles.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -14,22 +16,20 @@
             <div class="progress-bar-inner"></div>
         </div>
     </div>
-    <h1>Data standard structure viewer and editor</h1>
+    <header class="app-header">
+        <img class="app-logo" src="assets/hbh-logo.png" alt="HBH projekt" width="240" height="86">
+        <h1>Data standard structure viewer and editor</h1>
+    </header>
 
-    <div class="container">
-        <div class="left-side">
-            <div>
+<div class="matching-imports">
                 <div class="container-dropZone">
                     <div class="drop-zone" id="drop-zone1">
                         <span id="drop-zone1-text">Drag and drop JSON or IDS file here</span>
                         <input type="file" id="fileInput1" style="display:none" dataset="" accept=".json,.ids,application/json,text/xml,application/xml">
                         <pre id="jsonOutput1"></pre>
                     </div>
-                    <button onclick="clickToUpload('fileInput1', 'drop-zone1')">Load JSON or IDS file 1</button>
-                    <div>
-                        <button id="merge-json" class="disabled">Merge JSONs</button>
-                        <input type="file" id="fileInputMerged" style="display:none" data-json=""> 
-                    </div>
+                    <button onclick="clickToUpload('fileInput1', 'drop-zone1')">Načíst DSS1 (JSON / IDS)</button>
+
                 </div>
                 <div class="container-dropZone">
                     <div class="drop-zone" id="drop-zone2">
@@ -37,10 +37,58 @@
                         <input type="file" id="fileInput2" style="display:none" dataset="" accept=".json,.ids,application/json,text/xml,application/xml">
                         <pre id="jsonOutput2"></pre>
                     </div>
-                    <button onclick="clickToUpload('fileInput2', 'drop-zone2')">Load JSON or IDS file 2</button>
+                    <button onclick="clickToUpload('fileInput2', 'drop-zone2')">Načíst DSS2 (JSON / IDS)</button>
                 </div>
             </div>
 
+    <details id="standard-browser" class="standard-browser collapsible-workspace" open>
+        <summary class="workspace-summary"><h2>Prohlížení a úpravy standardu</h2><span class="workspace-collapse-label" aria-hidden="true"></span></summary>
+        <div class="standard-toolbar">
+            <button id="load-json1" class="disabled" disabled>Prohlížet a upravit DSS1</button>
+            <button id="load-json2" class="disabled" disabled>Prohlížet a upravit DSS2</button>
+            <button id="load-json-merged" class="disabled" disabled>Prohlížet a upravit výsledek</button>
+        </div>
+        <div class="standard-toolbar">
+            <button id="download-json1" class="disabled" disabled>Stáhnout DSS1</button>
+            <button id="download-json2" class="disabled" disabled>Stáhnout DSS2</button>
+            <button id="download-merge" class="disabled" disabled>Stáhnout výsledek</button>
+            <button id="standard-open-editor">Technický editor celého JSONu</button>
+            <button id="standard-back-browser" hidden>Zpět na přehled standardu</button>
+            <button id="download-changes" hidden>Stáhnout změny editoru</button>
+        </div>
+        <div id="standard-viewer">
+            <div class="standard-tabs">
+                <button id="standard-tab-objects" disabled>Objekty → požadované vlastnosti</button>
+                <button id="standard-tab-groups" disabled>Skupiny → vlastnosti</button>
+                <button id="standard-tab-enums" disabled>Číselníky hodnot</button>
+            </div>
+            <p>Načtěte soubor a zvolte DSS1, DSS2 nebo výsledek pro prohlížení a úpravy.</p>
+        </div>
+        <div id="dss-filter" hidden></div>
+        <div id="json-viewer" hidden></div>
+        <button class="workspace-collapse-bottom" type="button" onclick="const panel = this.closest('details'); panel.open = false; panel.querySelector('summary').focus(); panel.scrollIntoView({block: 'nearest'});">Sbalit prohlížení a úpravy ↑</button>
+    </details>
+
+            <section id="manual-matching" class="matching-panel">
+                <details id="matching-workspace" class="collapsible-workspace" open>
+                <summary class="workspace-summary"><h2>Párování objektů a vlastností</h2><span class="workspace-collapse-label" aria-hidden="true"></span></summary>
+                <p>Objekty se shodným GUID se spárují automaticky. U ostatních najděte a označte objekt v DSS1 i DSS2 a klikněte na Párovat. Níže je druhá tabulka pro vlastnosti. DSS1 je základ výsledného standardu.</p>
+                <button id="matching-open">Načíst / obnovit párování</button>
+                <div id="matching-content" hidden></div>
+                <button class="workspace-collapse-bottom" type="button" onclick="const panel = this.closest('details'); panel.open = false; panel.querySelector('summary').focus(); panel.scrollIntoView({block: 'nearest'});">Sbalit párování ↑</button>
+                </details>
+                    <div>
+                        <label class="matching-export-option"><input type="checkbox" id="matching-only-matched" checked> Pouze spárované objekty z IDS (menší výsledek)</label>
+                        <p class="matching-export-help">Z IDS se připojí automatické shody GUID a potvrzené ruční vazby, jejich vlastnosti a potřebné číselníky. Pro přidání všech objektů IDS volbu vypněte. Na běžné spojení dvou JSONů nemá tato volba vliv.</p>
+                        <button id="merge-json" class="disabled" disabled>Merge JSONs</button>
+                        <p id="matching-result-size" role="status"></p>
+                        <p id="matching-result-report" role="status"></p>
+                        <input type="file" id="fileInputMerged" style="display:none" data-json=""> 
+                    </div>
+            </section>
+
+    <div class="container support-panels">
+        <div class="left-side">
             <h2>Loaded Data Overview</h2>
             <div id="json-overview" class="overview-grid">
                 <div class="overview-card" id="json1-overview">
@@ -59,39 +107,28 @@
 
 
             <br />
-            <h2>Errors Viewer</h2>
-            <h3>Check imported data</h3>
-            <button id="check-json1" class="disabled">Check import 1</button>
-            <button id="check-json2" class="disabled">Check import 2</button>
-            <button id="check-json-merged" class="disabled">Check merged JSON</button>
+            <h2>Kontrola importu</h2>
+            <p>Strukturu JSONu respektujeme podle zdrojové aplikace. Kontrolujeme identifikátory a odkazy potřebné pro spojení; názvy polí a zápis číselníků znovu nevalidujeme. Varování na omezení převodu IDS nejsou chybami vstupního souboru.</p>
+            <button id="check-json1" class="disabled" disabled>Check import 1</button>
+            <button id="check-json2" class="disabled" disabled>Check import 2</button>
+            <button id="check-json-merged" class="disabled" disabled>Check merged JSON</button>
             <div id="errors-viewer"></div>
 
 
         </div>
 
-        <div class="right-side">
-            <h2>DSS Viewer</h2>
-            <div>
-                <button id="load-json1" class="disabled">Show JSON 1</button>
-                <button id="download-json1" class="disabled">Download JSON 1</button>
-                <button id="download-changes">Download change file JSON</button>
-            </div>
-            <div>
-                <button id="load-json2" class="disabled">Show JSON 2</button>
-                <button id="download-json2" class="disabled">Download JSON 2</button>
-            </div>
-            <div>
-                <button id="load-json-merged" class="disabled">Show merged JSON</button>
-                <button id="download-merge" class="disabled">Download merged JSON</button>
-            </div>
-            <h3>Filter</h3>
-            <div id="dss-filter"></div>
-            <div id="json-viewer"></div>
-        </div>
+
     </div>
 
     <script src="js/dss-model.js"></script>
+    <script src="js/standard-documents.js"></script>
+    <script src="js/dss-validation.js"></script>
     <script src="js/ids-import.js"></script>
+    <script src="js/property-matching.js"></script>
+    <script src="js/manual-matching.js"></script>
+    <script src="js/group-library.js"></script>
+    <script src="js/hbh-automations.js"></script>
+    <script src="js/standard-viewer.js"></script>
     <script src="js/app.js"></script>
 </body>
 
