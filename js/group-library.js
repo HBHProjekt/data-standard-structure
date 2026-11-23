@@ -17,7 +17,7 @@
             if (!imported.success || !imported.jsonData) throw new Error('IDS se nepodařilo načíst. Ověřte soubor.');
             doc = imported.jsonData;
         } else doc = JSON.parse(text);
-        catalog(doc); return doc;
+        catalog(doc); return global.DSS_HBH_AUTOMATIONS?.completeFromIfc(doc).doc || doc;
     }
     const canonical = value => {
         if (Array.isArray(value)) return value.map(canonical);

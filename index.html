@@ -19,8 +19,13 @@
     <header class="app-header">
         <img class="app-logo" src="assets/hbh-logo.png" alt="HBH projekt" width="240" height="86">
         <h1>Data standard structure viewer and editor</h1>
+        <div class="app-header-actions" role="group" aria-label="Spojení standardů a stažení výsledku">
+            <button id="header-merge-json" type="button" class="disabled" disabled>Spojit JSONy</button>
+            <button id="header-download-merge" type="button" class="disabled" disabled>Stáhnout výsledek</button>
+        </div>
     </header>
 
+    <main id="app-content" class="app-content" aria-label="Pracovní plocha standardů" tabindex="0">
 <div class="matching-imports">
                 <div class="container-dropZone">
                     <div class="drop-zone" id="drop-zone1">
@@ -119,6 +124,8 @@
 
 
     </div>
+
+    </main>
 
     <script src="js/dss-model.js"></script>
     <script src="js/standard-documents.js"></script>

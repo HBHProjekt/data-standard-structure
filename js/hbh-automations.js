@@ -176,9 +176,30 @@
     hints['Staničení do'] = hints.StationingTo;
     hints.Plocha = hints.QuantityArea;
     const hint = command => Object.hasOwn(hints, command) ? hints[command] : 'Vlastní příkaz z načteného standardu; jeho výstup není v dodané knihovně automatů popsán.';
+    const englishCommands = new Set(Object.keys(labels).filter(command => /^[A-Za-z][A-Za-z0-9_]*$/.test(command) && command !== 'Plocha'));
+    const populated = value => Array.isArray(value) ? value.some(populated) : value !== null && value !== undefined && (typeof value !== 'string' || value.trim() !== '');
+    function completeFromIfc(doc) {
+        if (!Array.isArray(doc?.data?.Properties)) return { doc, changes: [], count: 0 };
+        const changes = []; let count = 0;
+        const properties = doc.data.Properties.map((property, index) => {
+            if (!property || typeof property !== 'object') return property;
+            const fields = Object.entries(property), hbh = fields.filter(([key]) => key.toLowerCase() === 'namehbh');
+            // An explicit assignment always wins, including an unknown/custom command.
+            if (hbh.some(([, value]) => populated(value))) return property;
+            const ifc = [...new Set(fields.filter(([key, value]) => key.toLowerCase() === 'nameifc' && typeof value === 'string' && value.trim()).map(([, value]) => value.trim()))];
+            if (ifc.length !== 1 || !englishCommands.has(ifc[0])) return property;
+            const next = { ...property, nameHBH: ifc[0] };
+            for (const [key] of hbh) if (key !== 'nameHBH') {
+                delete next[key]; changes.push({ keyChain: ['data', 'Properties', index, key], oldValue: property[key], newValue: null, action: 'remove' });
+            }
+            changes.push({ keyChain: ['data', 'Properties', index, 'nameHBH'], oldValue: property.nameHBH ?? null, newValue: ifc[0], action: 'set' });
+            count++; return next;
+        });
+        return { doc: count ? { ...doc, data: { ...doc.data, Properties: properties } } : doc, changes, count };
+    }
     global.DSS_HBH_AUTOMATIONS = {
         entries: Object.entries(labels).map(([command, label]) => ({ command, label, hint: hint(command) })),
         label: command => Object.hasOwn(labels, command) ? labels[command] : '',
-        hint
+        hint, completeFromIfc
     };
 })(window);

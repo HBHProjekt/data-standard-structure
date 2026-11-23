@@ -271,7 +271,9 @@ function parseImportedContent(content, file) {
 function storeImportedData(jsonInput, importResult, file) {
     const refreshViewer = activeStandardInput === jsonInput;
     if (resourceJsonData === jsonInput) resourceJsonData = null;
-    window.DSS_DOCUMENTS.write(jsonInput, importResult.jsonData);
+    const completed = window.DSS_HBH_AUTOMATIONS?.completeFromIfc(importResult.jsonData);
+    window.DSS_DOCUMENTS.write(jsonInput, completed?.doc || importResult.jsonData);
+    for (const change of completed?.changes || []) changedValues.add(JSON.stringify({ ...change, source: file?.name || jsonInput.id }));
     jsonInput.dataset.importDiagnostics = JSON.stringify(importResult.diagnostics || []);
     jsonInput.dataset.importStats = importResult.stats ? JSON.stringify(importResult.stats) : '';
     jsonInput.dataset.importSourceType = importResult.importType || "json";
@@ -615,17 +617,12 @@ function displayJson(origin, json, parentElement, originalJson, keyChain = [], d
                     $('body').append(bubble);
                     bubble.hide();
 
-                    // Update the hover bubble position to 10 pixels from left top corner according to scrolling
-                    $(document).on('scroll', function (e) {
-                        bubble.css({
-                            left: $(window).scrollLeft() + 10,
-                            top: $(window).scrollTop() + 10
-                        });
-                    });
                     const hoverBubble = bubble;
 
                     valueElement.hover(
                         function () {
+                            const headerBottom = document.querySelector('.app-header')?.getBoundingClientRect().bottom || 0;
+                            hoverBubble.css({ left: 10, top: headerBottom + 10 });
                             hoverBubble.show();
                         },
                         function () {
@@ -1469,3 +1466,18 @@ document.getElementById("fileInput1").addEventListener("change", function (event
 document.getElementById("fileInput2").addEventListener("change", function (event) {
     handleFileInputChange(event, 'drop-zone2', 'fileInput2', 'load-json2', 'check-json2', 'download-json2');
 });
+
+// Header shortcuts delegate to the original actions and mirror their availability.
+function bindHeaderAction(headerId, actionId) {
+    const shortcut = document.getElementById(headerId), action = document.getElementById(actionId);
+    if (!shortcut || !action) return;
+    const sync = () => {
+        shortcut.disabled = action.disabled;
+        shortcut.classList.toggle('disabled', action.disabled);
+    };
+    shortcut.onclick = () => { if (!action.disabled) action.click(); };
+    new MutationObserver(sync).observe(action, { attributes: true, attributeFilter: ['disabled'] });
+    sync();
+}
+bindHeaderAction('header-merge-json', 'merge-json');
+bindHeaderAction('header-download-merge', 'download-merge');
