@@ -1,11 +1,11 @@
 # HBH – prohlížení, úpravy a spojování datových standardů
 
-Připravená verze pro publikování, 23. 11. 2026. Aplikace pracuje s JSON a IDS přímo v prohlížeči.
+Připravená verze pro publikování, 23. 11. 2026, revize 2. Aplikace pracuje s JSON a IDS přímo v prohlížeči.
 
 ## Nahrání do stávajícího repozitáře
 
 1. Rozbalte ZIP. Nahrávají se rozbalené soubory, nikoli archiv.
-2. Obsah této složky vložte do stejného místa v repozitáři, kde byl původní `index.html`. Pokud byl v kořeni repozitáře, patří tam přímo nový `index.html`, `js/`, `css/`, `structure/` a `assets/`. Nevytvářejte nad nimi další složku `vystup-github-2026-11-23` ani `data-standard-structure-main`.
+2. Obsah této složky vložte do stejného místa v repozitáři, kde byl původní `index.html`. Pokud byl v kořeni repozitáře, patří tam přímo nový `index.html`, `js/`, `css/`, `structure/` a `assets/`. Nevytvářejte nad nimi další složku `vystup-github-2026-11-23-v2` ani `data-standard-structure-main`.
 3. Nahraďte původní soubory a přidejte všechny nové soubory, zejména nové skripty a logo v `assets/`. Ponechte ostatní soubory repozitáře a stávající konfiguraci publikování (`.github/`, případně `CNAME` apod.).
 4. Uložte změny do větve, ze které se web publikuje. V GitHub webovém rozhraní použijte Add file → Upload files a nahrajte soubory i složky při zachování struktury.
 5. Nechte proběhnout dosavadní publikování webu. Tento balíček neobsahuje konfiguraci původního nasazování, protože nebyla součástí dodaných podkladů.
@@ -49,3 +49,8 @@ Testovací datové standardy, zdrojový C# soubor PropertyWizard, lokální spou
 - Doplněné přiřazení je uložené do pole nameHBH ve stahovaném JSONu. Pravidlo funguje také při importu skupin z dalšího souboru.
 
 Nahrajte celý obsah tohoto balíčku. Kvůli posledním úpravám se měnily HTML, CSS i JavaScript; nestačí nahrát jen index.html. Stávající soubory balíček nahrazuje, proto není nutné mazat repozitář nebo měnit nastavení GitHub Pages.
+## Revize 2 – odstranění číselníků
+
+V záložce Číselníky hodnot je nové tlačítko Odstranit číselník. Dialog před potvrzením ukáže vlastnosti používající číselník. Odstraněním se vymaže definice z CustomEnums a zruší odpovídající odkazy customEnum ve vlastnostech; vlastnosti i jejich výchozí hodnoty se zachovají. Zrušení dialogu nic nemění. Změna je součástí stahovaného JSONu.
+
+Tento balíček zahrnuje i všechny úpravy předchozí revize z 23. 11. 2026. Nahrajte celý rozbalený obsah stejně jako minule.

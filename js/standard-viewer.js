@@ -235,6 +235,37 @@
         save.onclick = () => { try { const change = importEnumerations(doc, incoming, [...selected], replace.checked); if (change.changes.length) apply(change); dialog.close(); } catch (failure) { error.textContent = failure.message; } };
         draw(); dialog.onclose = () => dialog.remove(); dialog.showModal(); return dialog;
     }
+    function removeEnumeration(doc, guid) {
+        const existing = rows(doc, 'CustomEnums');
+        if (existing.filter(row => row.guid === guid).length !== 1) throw new Error('Číselník chybí nebo nemá jednoznačné GUID. Otevřete přehled znovu.');
+        const enums = existing.filter(row => row.guid !== guid);
+        const changes = [{ keyChain: ['data', 'CustomEnums'], oldValue: existing, newValue: enums, action: 'set' }];
+        let unlinked = 0;
+        const properties = rows(doc, 'Properties').map((property, index) => {
+            if (property.customEnum !== guid) return property;
+            const next = { ...property }; delete next.customEnum; unlinked++;
+            changes.push({ keyChain: ['data', 'Properties', index, 'customEnum'], oldValue: guid, newValue: null, action: 'remove' });
+            return next;
+        });
+        return { doc: { ...doc, data: { ...doc.data, CustomEnums: enums, ...(unlinked ? { Properties: properties } : {}) } }, changes, kind: 'enumerationRemoval', unlinked };
+    }
+    function enumerationRemovalPicker(doc, enumeration, apply) {
+        const users = rows(doc, 'Properties').filter(property => property.customEnum === enumeration.guid);
+        const box = el('dialog', undefined, document.body); box.id = 'standard-enum-remove-dialog'; box.className = 'hbh-automation-dialog';
+        const title = el('h2', 'Odstranit číselník', box); title.id = 'standard-enum-remove-title'; box.setAttribute('aria-labelledby', title.id);
+        el('p', 'Číselník: ' + (enumeration.name || enumeration.guid), box);
+        el('p', users.length ? `Číselník používá ${users.length} vlastností. Odstraněním se zruší i jejich přiřazení k tomuto číselníku. Vlastnosti a jejich výchozí hodnoty zůstanou zachované.` : 'Tento číselník nepoužívá žádná vlastnost. Odstraní se z knihovny standardu.', box);
+        if (users.length) {
+            const list = el('ul', undefined, box); list.className = 'enum-removal-usage';
+            for (const property of users) el('li', (property.nameCz || property.nameIfc || '(bez názvu)') + ' · ' + property.guid, list);
+        }
+        const error = el('p', '', box); error.className = 'hbh-picker-error'; error.setAttribute('role', 'alert');
+        const actions = el('div', undefined, box); actions.className = 'standard-toolbar';
+        const remove = el('button', users.length ? 'Odstranit číselník a zrušit přiřazení' : 'Odstranit číselník', actions); remove.id = 'standard-enum-remove-confirm'; remove.type = 'button'; remove.className = 'enum-remove-button';
+        remove.onclick = () => { try { apply(removeEnumeration(doc, enumeration.guid)); box.close(); } catch (failure) { error.textContent = failure.message; } };
+        const cancel = el('button', 'Zrušit', actions); cancel.type = 'button'; cancel.onclick = () => box.close();
+        box.onclose = () => box.remove(); box.showModal(); return box;
+    }
     function enumerationPicker(doc, apply, current) {
         const dialog = el('dialog', undefined, document.body); dialog.className = 'hbh-automation-dialog'; dialog.id = 'standard-enum-dialog';
         const title = el('h2', current ? 'Upravit číselník' : 'Přidat vlastní číselník', dialog); title.id = 'standard-enum-title'; dialog.setAttribute('aria-labelledby', title.id);
@@ -660,6 +691,10 @@
                     state.query = ''; state.page = 0; options.onChange(change.doc, change);
                 }, item.row);
                 const download = el('button', 'Exportovat tento číselník', controls); download.type = 'button'; download.onclick = () => downloadEnumerations(doc, [item.key]);
+                const remove = el('button', 'Odstranit číselník', controls); remove.type = 'button'; remove.id = 'standard-enum-remove'; remove.className = 'enum-remove-button'; remove.disabled = typeof options.onChange !== 'function';
+                remove.onclick = () => enumerationRemovalPicker(doc, item.row, change => {
+                    options.onChange(change.doc, change);
+                });
                 renderValues(detail, enumValues(item.row)); technical(detail, 'Technický záznam číselníku', item.row); return;
             }
             const object = state.mode === 'objects' ? model.objectDetail(item.key) : null;
@@ -719,5 +754,5 @@
         setup(); if (state.selected && !detail.children.length) drawDetail(); return { model, state };
     }
     global.DSS_VIEWER = { createModel, render, renderEmpty, enumValues, summarizeValue, automationCatalog, setAutomation, setTypeAspect, automationPicker, addEnumeration, editEnumeration, enumerationPicker,
-        exportEnumerations, readEnumerations, importEnumerations, enumerationImportPicker, setPropertyEnumeration, propertyEnumerationPicker };
+        exportEnumerations, readEnumerations, importEnumerations, enumerationImportPicker, setPropertyEnumeration, propertyEnumerationPicker, removeEnumeration, enumerationRemovalPicker };
 })(window);
