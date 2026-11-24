@@ -28,7 +28,7 @@
     function importGroups(target, source, selections) {
         catalog(source);
         const index = new Map(), data = { ...target.data }, changes = [], mapped = new Map(), active = new Set(), destinations = new Map();
-        const counts = { groups: 0, properties: 0, dependencies: 0, reused: 0 };
+        const counts = { groups: 0, properties: 0, dependencies: 0, reused: 0, groupsUpdated: 0 };
         for (const table of ['GroupsOfProperties', 'Properties', 'DataTypes', 'IfcTypes', 'Units', 'CustomEnums']) {
             const byId = new Map();
             for (const row of rows(source, table)) { if (!byId.has(row.guid)) byId.set(row.guid, []); byId.get(row.guid).push(row); }
@@ -73,7 +73,25 @@
             const selected = [...new Set(selection.properties || [])]; if (!selected.length) continue;
             if (selected.some(id => !allowed.has(id))) throw new Error('Vybraná vlastnost nepatří do skupiny ' + group.name + '.');
             const imported = { ...clone(group), properties: selected.map(id => copy('Properties', id)) };
-            append('GroupsOfProperties', imported); selectedName = group.name || 'Bez názvu skupiny';
+            if (selection.into) {
+                const groups = rows({ data }, 'GroupsOfProperties'), found = groups.map((row, i) => row.guid === selection.into ? i : -1).filter(i => i >= 0);
+                if (found.length !== 1) throw new Error('Cílová skupina chybí nebo nemá jednoznačné GUID.');
+                const position = found[0], original = groups[position], added = imported.properties.filter(id => !(original.properties || []).includes(id));
+                const names = new Map();
+                for (const id of [...(original.properties || []), ...added]) {
+                    const p = rows({ data }, 'Properties').find(row => row.guid === id);
+                    if (!p) throw new Error('Chybí definice vlastnosti: ' + id);
+                    const name = String(p.nameIfc || p.nameIFC || p.nameCz || '').normalize('NFC').trim();
+                    if (name && names.has(name) && names.get(name) !== id) throw new Error('Skupina už obsahuje jinou vlastnost s IFC názvem: ' + name);
+                    names.set(name, id);
+                }
+                if (added.length) {
+                    data.GroupsOfProperties = groups.slice(); data.GroupsOfProperties[position] = { ...original, properties: [...(original.properties || []), ...added] };
+                    changes.push({ keyChain: ['data', 'GroupsOfProperties', position, 'properties'], oldValue: original.properties || [], newValue: data.GroupsOfProperties[position].properties, action: 'set' });
+                    counts.groupsUpdated++;
+                }
+                selectedName = original.name || 'Bez názvu skupiny';
+            } else { append('GroupsOfProperties', imported); selectedName = group.name || 'Bez názvu skupiny'; }
         }
         return { doc: changes.length ? { ...target, data } : target, changes, kind: 'groupLibrary', selectedName, counts };
     }
@@ -106,9 +124,51 @@
         const title = el('h2', titleText, box); title.id = id + '-title'; box.setAttribute('aria-labelledby', title.id);
         box.onclose = () => box.remove(); return box;
     }
-    function createPicker(doc, apply) {
-        const box = dialog('Přidat skupinu vlastností', 'group-create-dialog');
+    function extendGroup(doc, guid, drafts, existing = []) {
+        const groups = rows(doc, 'GroupsOfProperties').filter(group => group.guid === guid);
+        if (groups.length !== 1) throw new Error('Cílová skupina není jednoznačná.');
+        if (!drafts.length && !existing.length) throw new Error('Přidejte nebo vyberte alespoň jednu vlastnost.');
+        const source = drafts.length ? createGroup(global.DSS_MODEL.createEmptyDocument(), groups[0].name || 'Skupina', drafts).doc : global.DSS_MODEL.createEmptyDocument();
+        let group = source.data.GroupsOfProperties[0];
+        if (!group) { group = { guid: uuid(), name: groups[0].name, properties: [] }; source.data.GroupsOfProperties.push(group); }
+        for (const id of new Set(existing)) {
+            const found = rows(doc, 'Properties').filter(p => p.guid === id);
+            if (found.length !== 1) throw new Error('Vybraná vlastnost není jednoznačná.');
+            source.data.Properties.push(found[0]); group.properties.push(id);
+        }
+        for (const table of ['DataTypes', 'IfcTypes', 'Units', 'CustomEnums']) source.data[table] = [...source.data[table], ...rows(doc, table)];
+        return importGroups(doc, source, [{ group: group.guid, properties: group.properties, into: guid }]);
+    }
+    function createPicker(doc, apply, existingGroups) {
+        const extending = !!existingGroups?.length;
+        const box = dialog(extending ? 'Přidat vlastnosti do skupiny' : 'Přidat skupinu vlastností', 'group-create-dialog');
         const label = el('label', 'Název skupiny', box), name = el('input', undefined, box); name.id = 'group-create-name'; label.htmlFor = name.id;
+        let targetGroup = existingGroups?.[0]?.guid;
+        const chosen = new Set();
+        if (extending) {
+            name.value = existingGroups[0].name; name.readOnly = true;
+            if (existingGroups.length > 1) {
+                const selectLabel = el('label', 'Konkrétní varianta skupiny', box), select = el('select', undefined, selectLabel); select.id = 'group-extend-target';
+                for (const group of existingGroups) el('option', `${group.name} · ${(group.properties || []).length} vlastností · ${group.guid}`, select).value = group.guid;
+                select.value = targetGroup; select.onchange = () => { targetGroup = select.value; };
+            }
+            el('p', 'Doplňuje se konkrétní sdílená skupina. Nové vlastnosti uvidí všechny objekty, které ji používají.', box);
+            const library = el('details', undefined, box); el('summary', 'Vybrat existující vlastnosti standardu', library);
+            const search = el('input', undefined, library); search.type = 'search'; search.placeholder = 'Hledat vlastnost'; search.setAttribute('aria-label', search.placeholder);
+            const output = el('div', undefined, library); output.className = 'group-import-list'; let limit = 100;
+            function drawLibrary() {
+                output.replaceChildren();
+                const found = rows(doc, 'Properties').filter(p => norm([p.nameCz, p.nameIfc, p.guid].join(' ')).includes(norm(search.value)));
+                for (const p of found.slice(0, limit)) {
+                    const label = el('label', undefined, output); label.className = 'group-assignment-choice';
+                    const check = el('input', undefined, label); check.type = 'checkbox'; check.checked = chosen.has(p.guid); check.dataset.existingProperty = p.guid;
+                    el('span', `${p.nameCz || p.nameIfc} · ${p.nameIfc || ''} · ${p.guid}`, label);
+                    check.onchange = () => { if (check.checked) chosen.add(p.guid); else chosen.delete(p.guid); };
+                }
+                if (found.length > limit) { const more = el('button', 'Dalších 100 vlastností', output); more.type = 'button'; more.onclick = () => { limit += 100; drawLibrary(); }; }
+            }
+            search.oninput = () => { limit = 100; drawLibrary(); }; drawLibrary();
+        }
         el('p', 'Zadejte vlastnosti nové skupiny. Pokud IFC název nevyplníte, použije se český název. Automaty a číselníky přiřadíte po uložení v přehledu.', box);
         const list = el('div', undefined, box); const drafts = [];
         function addRow() {
@@ -124,8 +184,13 @@
         const add = el('button', '＋ Přidat vlastnost', box); add.type = 'button'; add.id = 'group-create-add-property'; add.onclick = addRow;
         const error = el('p', '', box); error.className = 'hbh-picker-error'; error.setAttribute('role', 'alert');
         const actions = el('div', undefined, box); actions.className = 'standard-toolbar';
-        const save = el('button', 'Přidat skupinu', actions); save.id = 'group-create-save'; save.type = 'button';
-        save.onclick = () => { try { const change = createGroup(doc, name.value, drafts.map(item => ({ nameCz: item.cz.value, nameIfc: item.ifc.value, type: item.type.value, unit: item.unit.value }))); apply(change); box.close(); } catch (failure) { error.textContent = failure.message; } };
+        const save = el('button', extending ? 'Přidat vlastnosti do skupiny' : 'Přidat skupinu', actions); save.id = 'group-create-save'; save.type = 'button';
+        save.onclick = () => { try {
+            const values = drafts.filter(item => !extending || item.cz.value.trim() || item.ifc.value.trim() || item.unit.value.trim()).map(item => ({ nameCz: item.cz.value, nameIfc: item.ifc.value, type: item.type.value, unit: item.unit.value }));
+            const change = extending ? extendGroup(doc, targetGroup, values, [...chosen]) : createGroup(doc, name.value, values);
+            if (!change.changes.length) { error.textContent = 'Vybrané vlastnosti už ve skupině jsou.'; return; }
+            apply(change); box.close();
+        } catch (failure) { error.textContent = failure.message; } };
         const cancel = el('button', 'Zrušit', actions); cancel.type = 'button'; cancel.onclick = () => box.close();
         box.showModal(); return box;
     }
@@ -276,5 +341,55 @@
         } catch (failure) { error.textContent = failure.message; } };
         box.showModal(); return box;
     }
-    global.DSS_GROUP_LIBRARY = { catalog, readSource, importGroups, createGroup, createPicker, importPicker, assignGroups, assignmentPicker };
+    function editProperty(doc, guid, values) {
+        const found = rows(doc, 'Properties').map((p, i) => p.guid === guid ? i : -1).filter(i => i >= 0);
+        if (found.length !== 1) throw new Error('Vlastnost nemá jednoznačné GUID.');
+        const position = found[0], original = doc.data.Properties[position], nameCz = String(values.nameCz || '').trim(), nameIfc = String(values.nameIfc || '').trim() || nameCz;
+        if (!nameCz) throw new Error('Vyplňte český název vlastnosti.');
+        for (const group of rows(doc, 'GroupsOfProperties').filter(group => (group.properties || []).includes(guid)))
+            for (const id of group.properties || []) if (id !== guid) {
+                const other = rows(doc, 'Properties').find(p => p.guid === id);
+                if (other && String(other.nameIfc || other.nameIFC || other.nameCz || '').trim() === nameIfc) throw new Error('Ve skupině ' + group.name + ' už existuje jiná vlastnost s IFC názvem ' + nameIfc + '.');
+            }
+        const data = { ...doc.data }, changes = [];
+        function ensure(table, field, value) {
+            value = String(value || '').trim(); if (!value) return '';
+            const existing = rows({ data }, table).find(row => row[field] === value); if (existing) return existing.guid;
+            const current = rows({ data }, table), row = { guid: uuid(), [field]: value }; data[table] = [...current, row];
+            changes.push({ keyChain: ['data', table, current.length], oldValue: null, newValue: row, action: 'set' }); return row.guid;
+        }
+        if (!String(values.type || '').trim()) throw new Error('Vyberte datový typ.');
+        const ifcKey = Object.hasOwn(original, 'nameIfc') || !Object.hasOwn(original, 'nameIFC') ? 'nameIfc' : 'nameIFC';
+        const next = { ...original, nameCz, [ifcKey]: nameIfc, dataType: ensure('DataTypes', 'type', values.type),
+            ifcType: ensure('IfcTypes', 'type', values.ifcType), unit: ensure('Units', 'unit', values.unit), description: String(values.description || '') };
+        for (const key of [ifcKey === 'nameIfc' ? 'nameIFC' : 'nameIfc']) if (Object.hasOwn(next, key)) next[key] = nameIfc;
+        for (const key of Object.keys(next)) if (JSON.stringify(next[key]) !== JSON.stringify(original[key]))
+            changes.push({ keyChain: ['data', 'Properties', position, key], oldValue: original[key] ?? null, newValue: next[key], action: 'set' });
+        data.Properties = rows(doc, 'Properties').slice(); data.Properties[position] = next;
+        return { doc: changes.length ? { ...doc, data } : doc, changes, kind: 'propertyDefinition', propertyGuid: guid };
+    }
+    function propertyPicker(doc, property, apply) {
+        const box = dialog('Upravit definici vlastnosti', 'property-definition-dialog');
+        const users = rows(doc, 'GroupsOfProperties').filter(group => (group.properties || []).includes(property.guid));
+        el('p', `Sdílená vlastnost: ${property.nameCz || property.nameIfc}. Používá ji ${users.length} skupin. Úprava platí ve všech těchto skupinách a navázaných objektech.`, box);
+        function field(title, id, value, tag = 'input') {
+            const label = el('label', title, box), input = el(tag, undefined, box); input.id = id; label.htmlFor = id; input.value = value || ''; return input;
+        }
+        const cz = field('Český název', 'property-definition-name', property.nameCz), ifc = field('IFC název', 'property-definition-ifc', property.nameIfc || property.nameIFC);
+        const currentType = rows(doc, 'DataTypes').find(row => row.guid === property.dataType)?.type || '';
+        const type = field('Datový typ', 'property-definition-type', '', 'select');
+        for (const value of new Set([currentType, ...rows(doc, 'DataTypes').map(row => row.type), 'String', 'Integer', 'Real', 'Boolean', 'Date', 'Enum', 'Reference'].filter(Boolean))) el('option', value, type).value = value;
+        type.value = currentType || 'String';
+        const ifcType = field('IFC typ', 'property-definition-ifc-type', rows(doc, 'IfcTypes').find(row => row.guid === property.ifcType)?.type);
+        const unit = field('Jednotka', 'property-definition-unit', rows(doc, 'Units').find(row => row.guid === property.unit)?.unit);
+        const description = field('Popis', 'property-definition-description', property.description, 'textarea'); description.rows = 3;
+        el('p', 'Změna typu sama nepřevádí existující výchozí hodnoty ani hodnoty číselníku. Zkontrolujte jejich vhodnost. Automat a číselník vybíráte samostatně v tabulce.', box);
+        const error = el('p', '', box); error.className = 'hbh-picker-error'; error.setAttribute('role', 'alert');
+        const actions = el('div', undefined, box); actions.className = 'standard-toolbar';
+        const save = el('button', 'Uložit definici', actions); save.type = 'button'; save.id = 'property-definition-save';
+        save.onclick = () => { try { const change = editProperty(doc, property.guid, { nameCz: cz.value, nameIfc: ifc.value, type: type.value, ifcType: ifcType.value, unit: unit.value, description: description.value }); if (change.changes.length) apply(change); box.close(); } catch (failure) { error.textContent = failure.message; } };
+        const cancel = el('button', 'Zrušit', actions); cancel.type = 'button'; cancel.onclick = () => box.close();
+        box.showModal(); return box;
+    }
+    global.DSS_GROUP_LIBRARY = { catalog, readSource, importGroups, createGroup, createPicker, importPicker, assignGroups, assignmentPicker, extendGroup, editProperty, propertyPicker };
 })(window);

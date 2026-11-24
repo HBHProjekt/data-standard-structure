@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    // Display names for the active property cases in podkladyGITHUB/PropertyWizard.cs.
+    // Display names for PropertyWizard.cs cases and QuantityVolume from HBHBIMClassification.cs.
     // Keys are the exact Civil/HBHBIM identifiers, including legacy spellings.
     const labels = {
         DataTemplateID: 'Identifikátor datové šablony',
@@ -73,6 +73,7 @@
         ElementHeight: 'Výška elementu',
         QuantityLength: 'Délka',
         QuantityCount: 'Počet',
+        QuantityVolume: 'Objem',
         Thickness: 'Tloušťka',
         CzechName: 'Český název',
         LatinName: 'Latinský název',
@@ -156,6 +157,7 @@
         ElementHeight: 'Vrátí výšku z geometrické obálky samostatného prvku, zaokrouhlenou na dvě desetinná místa.',
         QuantityLength: 'Vrátí délku podle typu geometrie: prostorovou délku potrubí, výšku piloty/sloupku, délku trasy nebo součet délek regionů koridoru.',
         QuantityCount: 'Vrátí počet dílčích prvků zahrnutých v klasifikovaném prvku.',
+        QuantityVolume: 'Při automatickém zápisu v HBHBIMClassification vrátí objem konkrétního elementu přes AutoProperties.SolidVolume na 3 desetinná místa. Výpočet se spouští pro hodnotu <auto>.',
         Thickness: 'Načte tloušťku z parametru odpovídající podsestavy koridoru. Zápornou tloušťku nevyplní.',
         CzechName: 'Načte český název ze sady vlastností _HBH_Strom na přiřazeném prvku.',
         LatinName: 'Načte latinský název ze sady vlastností _HBH_Strom na přiřazeném prvku.',

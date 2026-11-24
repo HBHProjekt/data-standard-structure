@@ -524,6 +524,10 @@
                     const p = item.property, tr = el('tr', undefined, body); tr.dataset.propertyGuid = p.guid;
                     const name = el('td', undefined, tr); el('strong', p.nameCz || p.nameIfc || '(bez názvu)', name);
                     if (p.nameIfc && p.nameIfc !== p.nameCz) el('small', p.nameIfc, name);
+                    const edit = el('button', 'Upravit vlastnost', name); edit.type = 'button'; edit.className = 'property-edit-button'; edit.dataset.editProperty = p.guid; edit.disabled = typeof options.onChange !== 'function';
+                    edit.onclick = () => global.DSS_GROUP_LIBRARY.propertyPicker(doc, p, change => {
+                        state.detailQueries[state.mode + '|' + state.selected] = ''; options.onChange(change.doc, change);
+                    });
                     const automatic = el('td', undefined, tr); automatic.className = 'standard-automation-cell';
                     const commands = global.DSS_MODEL.hbhCommands(p);
                     for (const command of commands) {
@@ -721,6 +725,12 @@
             const search = el('input', undefined, detail); search.type = 'search'; search.placeholder = 'Hledat vlastnost nebo HBHBIM příkaz'; search.setAttribute('aria-label', 'Hledat vlastnost v detailu');
             const queryKey = state.mode + '|' + state.selected; search.value = state.detailQueries[queryKey] || '';
             const controls = el('div', undefined, detail); controls.className = 'standard-toolbar';
+            if (!object) {
+                const addProperties = el('button', '＋ Přidat vlastnosti do skupiny', controls); addProperties.type = 'button'; addProperties.id = 'standard-group-add-properties'; addProperties.disabled = typeof options.onChange !== 'function';
+                addProperties.onclick = () => global.DSS_GROUP_LIBRARY.createPicker(doc, change => {
+                    state.detailQueries[state.mode + '|' + state.selected] = ''; options.onChange(change.doc, change);
+                }, item.members);
+            }
             const expand = el('button', 'Rozbalit skupiny', controls), collapse = el('button', 'Sbalit skupiny', controls);
             const groupBox = el('div', undefined, detail);
             let visibleGroups = [];

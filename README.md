@@ -1,11 +1,11 @@
 # HBH – prohlížení, úpravy a spojování datových standardů
 
-Připravená verze pro publikování, 23. 11. 2026, revize 2. Aplikace pracuje s JSON a IDS přímo v prohlížeči.
+Připravená verze pro publikování, 24. 11. 2026. Aplikace pracuje s JSON a IDS přímo v prohlížeči.
 
 ## Nahrání do stávajícího repozitáře
 
 1. Rozbalte ZIP. Nahrávají se rozbalené soubory, nikoli archiv.
-2. Obsah této složky vložte do stejného místa v repozitáři, kde byl původní `index.html`. Pokud byl v kořeni repozitáře, patří tam přímo nový `index.html`, `js/`, `css/`, `structure/` a `assets/`. Nevytvářejte nad nimi další složku `vystup-github-2026-11-23-v2` ani `data-standard-structure-main`.
+2. Obsah této složky vložte do stejného místa v repozitáři, kde byl původní `index.html`. Pokud byl v kořeni repozitáře, patří tam přímo nový `index.html`, `js/`, `css/`, `structure/` a `assets/`. Nevytvářejte nad nimi další složku `vystup-github-2026-11-24` ani `data-standard-structure-main`.
 3. Nahraďte původní soubory a přidejte všechny nové soubory, zejména nové skripty a logo v `assets/`. Ponechte ostatní soubory repozitáře a stávající konfiguraci publikování (`.github/`, případně `CNAME` apod.).
 4. Uložte změny do větve, ze které se web publikuje. V GitHub webovém rozhraní použijte Add file → Upload files a nahrajte soubory i složky při zachování struktury.
 5. Nechte proběhnout dosavadní publikování webu. Tento balíček neobsahuje konfiguraci původního nasazování, protože nebyla součástí dodaných podkladů.
@@ -54,3 +54,11 @@ Nahrajte celý obsah tohoto balíčku. Kvůli posledním úpravám se měnily HT
 V záložce Číselníky hodnot je nové tlačítko Odstranit číselník. Dialog před potvrzením ukáže vlastnosti používající číselník. Odstraněním se vymaže definice z CustomEnums a zruší odpovídající odkazy customEnum ve vlastnostech; vlastnosti i jejich výchozí hodnoty se zachovají. Zrušení dialogu nic nemění. Změna je součástí stahovaného JSONu.
 
 Tento balíček zahrnuje i všechny úpravy předchozí revize z 23. 11. 2026. Nahrajte celý rozbalený obsah stejně jako minule.
+## Aktualizace 24. 11. 2026
+
+- QuantityVolume (Objem) doplněný podle HBHBIMClassification.cs, včetně českého názvu, hintu a rozpoznání z nameIfc / nameIFC. Katalog nyní obsahuje 85 identifikátorů automatů.
+- Přidávání nových vlastností do existujících skupin a přiřazování již definovaných vlastností standardu. U stejnojmenných variant se vybírá konkrétní skupina podle GUID. Existující GUID skupiny a vazby objektů se zachovávají.
+- Editace definice vlastnosti: český název, IFC název, datový typ, IFC typ, jednotka a popis. Sdílená definice se upraví ve všech používajících skupinách a objektech. Automat, číselník a defaulty se zachovávají; změna typu sama nepřevádí jejich hodnoty.
+- Zahrnuje také předchozí odstranění číselníků, stálou hlavičku a doplňování nameHBH z nameIfc.
+
+Nahrajte celý rozbalený obsah tohoto balíčku do kořene stávajícího repozitáře. Zdrojové C# soubory nejsou ke spuštění webu potřebné; katalog a popisy jsou přímo v JavaScriptu.

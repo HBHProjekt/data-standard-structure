@@ -40,6 +40,7 @@ body {
 .group-library-dialog { width: min(980px, 90vw); }
 .group-create-property { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px solid #ddd; }
 .group-create-property > label { min-width: 0; font-size: 13px; }
+.standard-properties .property-edit-button { display: block; padding: 7px 9px; margin: 5px 0; background: #235c3e; font-size: 12px; }
 .group-create-property button { margin: 7px 0 16px; padding: 9px; }
 .group-import-list { max-height: 48vh; overflow-y: auto; }
 .group-import-block { padding: 12px; margin: 8px 0; border: 1px solid #d7e2dc; border-radius: 6px; }
