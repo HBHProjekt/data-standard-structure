@@ -512,7 +512,7 @@
                 const next = el('button', 'Další →', pagination); next.disabled = (state.page + 1) * 60 >= found.length; next.onclick = () => { state.page++; drawList(); };
             }
         }
-        function propertiesTable(parent, items, objectScope) {
+        function propertiesTable(parent, items, objectScope, groupScope) {
             const table = el('table', undefined, parent); table.className = 'standard-properties';
             const titles = ['Vlastnost', 'HBHBIM automat', 'Číselník hodnot', 'Typ / jednotka', 'Požadavek'];
             titles.push(objectScope ? 'Default pro tento objekt' : 'Default vlastnosti');
@@ -528,6 +528,13 @@
                     edit.onclick = () => global.DSS_GROUP_LIBRARY.propertyPicker(doc, p, change => {
                         state.detailQueries[state.mode + '|' + state.selected] = ''; options.onChange(change.doc, change);
                     });
+                    if (groupScope) {
+                        const removable = groupScope.some(group => global.DSS_GROUP_LIBRARY?.canRemoveProperty(doc, group.guid, p.guid));
+                        if (removable) {
+                            const remove = el('button', 'Odebrat ze skupiny', name); remove.type = 'button'; remove.className = 'enum-remove-button'; remove.dataset.removeGroupProperty = p.guid; remove.disabled = typeof options.onChange !== 'function';
+                            remove.onclick = () => global.DSS_GROUP_LIBRARY.propertyRemovalPicker(doc, p, groupScope.map(group => group.guid), change => options.onChange(change.doc, change));
+                        } else el('small', 'Zdrojová vlastnost – nelze odebrat', name);
+                    }
                     const automatic = el('td', undefined, tr); automatic.className = 'standard-automation-cell';
                     const commands = global.DSS_MODEL.hbhCommands(p);
                     for (const command of commands) {
@@ -747,7 +754,7 @@
                     el('summary', `${group.name} → ${items.length} vlastností`, box);
                     let loaded = false;
                     const openKey = queryKey + '|' + index + '|' + group.name;
-                    const load = () => { state.openGroups[openKey] = box.open; if (box.open && !loaded) { propertiesTable(box, items, object?.row); loaded = true; } };
+                    const load = () => { state.openGroups[openKey] = box.open; if (box.open && !loaded) { propertiesTable(box, items, object?.row, object ? null : item.members); loaded = true; } };
                     box.ontoggle = load; if (query || (state.openGroups[openKey] ?? index < 2)) { box.open = true; load(); }
                 }
                 if (!groupBox.children.length) el('p', 'V tomto detailu nebyly nalezeny vlastnosti.', groupBox);

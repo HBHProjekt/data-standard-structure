@@ -1,11 +1,11 @@
 # HBH – prohlížení, úpravy a spojování datových standardů
 
-Připravená verze pro publikování, 24. 11. 2026. Aplikace pracuje s JSON a IDS přímo v prohlížeči.
+Připravená verze pro publikování, 24. 11. 2026, revize 2. Aplikace pracuje s JSON a IDS přímo v prohlížeči.
 
 ## Nahrání do stávajícího repozitáře
 
 1. Rozbalte ZIP. Nahrávají se rozbalené soubory, nikoli archiv.
-2. Obsah této složky vložte do stejného místa v repozitáři, kde byl původní `index.html`. Pokud byl v kořeni repozitáře, patří tam přímo nový `index.html`, `js/`, `css/`, `structure/` a `assets/`. Nevytvářejte nad nimi další složku `vystup-github-2026-11-24` ani `data-standard-structure-main`.
+2. Obsah této složky vložte do stejného místa v repozitáři, kde byl původní `index.html`. Pokud byl v kořeni repozitáře, patří tam přímo nový `index.html`, `js/`, `css/`, `structure/` a `assets/`. Nevytvářejte nad nimi další složku `vystup-github-2026-11-24-v2` ani `data-standard-structure-main`.
 3. Nahraďte původní soubory a přidejte všechny nové soubory, zejména nové skripty a logo v `assets/`. Ponechte ostatní soubory repozitáře a stávající konfiguraci publikování (`.github/`, případně `CNAME` apod.).
 4. Uložte změny do větve, ze které se web publikuje. V GitHub webovém rozhraní použijte Add file → Upload files a nahrajte soubory i složky při zachování struktury.
 5. Nechte proběhnout dosavadní publikování webu. Tento balíček neobsahuje konfiguraci původního nasazování, protože nebyla součástí dodaných podkladů.
@@ -62,3 +62,12 @@ Tento balíček zahrnuje i všechny úpravy předchozí revize z 23. 11. 2026. N
 - Zahrnuje také předchozí odstranění číselníků, stálou hlavičku a doplňování nameHBH z nameIfc.
 
 Nahrajte celý rozbalený obsah tohoto balíčku do kořene stávajícího repozitáře. Zdrojové C# soubory nejsou ke spuštění webu potřebné; katalog a popisy jsou přímo v JavaScriptu.
+## Revize 2 – odebrání přidaných vlastností ze skupin
+
+- Ve skupinovém pohledu lze přes Odebrat ze skupiny odstranit uživatelsky přidaná přiřazení vlastností.
+- Původní vazby ze zdrojového standardu jsou chráněné. Odebírá se pouze vazba v konkrétní skupině; definice vlastnosti a použití v ostatních skupinách zůstávají zachované.
+- Dialog rozlišuje stejnojmenné varianty skupin podle GUID. Změna sdílené skupiny platí pro všechny objekty, které ji používají.
+- Původ přidaných vazeb je uložený v hbhEditor.addedGroupProperties a zachovává se po stažení a novém načtení JSONu.
+- Starší soubory bez záznamu původu mají všechna dosavadní přiřazení chráněná. Zpětně nelze spolehlivě rozlišit původní a dodatečně přidané vazby.
+
+Balíček obsahuje i všechny předchozí funkce včetně editace vlastností, QuantityVolume a odstranění číselníků. Nahrajte celý rozbalený obsah do stejného místa v repozitáři jako minule.

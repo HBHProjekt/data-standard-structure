@@ -5,6 +5,19 @@
     const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     const uuid = () => global.crypto?.randomUUID ? global.crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const n = Math.floor(Math.random() * 16); return (c === 'x' ? n : (n & 3) | 8).toString(16); });
     const refs = { dataType: 'DataTypes', ifcType: 'IfcTypes', unit: 'Units', customEnum: 'CustomEnums' };
+    function userLinks(doc) { return Array.isArray(doc.hbhEditor?.addedGroupProperties) ? doc.hbhEditor.addedGroupProperties : []; }
+    function recordUserLinks(result, links) {
+        if (!links.length) return result;
+        const combined = userLinks(result.doc).slice();
+        for (const link of links) if (!combined.some(item => item.groupGuid === link.groupGuid && item.propertyGuid === link.propertyGuid)) combined.push(link);
+        const metadata = { ...result.doc.hbhEditor, addedGroupProperties: combined };
+        result.changes.push({ keyChain: ['hbhEditor'], oldValue: result.doc.hbhEditor ?? null, newValue: metadata, action: 'set' });
+        return { ...result, doc: { ...result.doc, hbhEditor: metadata } };
+    }
+    function canRemoveProperty(doc, groupGuid, propertyGuid) {
+        return rows(doc, 'GroupsOfProperties').filter(group => group.guid === groupGuid && (group.properties || []).includes(propertyGuid)).length === 1 &&
+            userLinks(doc).some(link => link.groupGuid === groupGuid && link.propertyGuid === propertyGuid);
+    }
     function catalog(doc) {
         if (!doc?.data || !Array.isArray(doc.data.GroupsOfProperties) || !Array.isArray(doc.data.Properties)) throw new Error('Soubor neobsahuje skupiny vlastností a vlastnosti standardu.');
         const properties = new Map(rows(doc, 'Properties').map(row => [row.guid, row]));
@@ -67,7 +80,7 @@
             }
             const id = append(table, row); mapped.set(key, id); active.delete(key); return id;
         }
-        let selectedName = '';
+        let selectedName = ''; const additions = [];
         for (const selection of selections) {
             const group = sourceRow('GroupsOfProperties', selection.group), allowed = new Set(group.properties || []);
             const selected = [...new Set(selection.properties || [])]; if (!selected.length) continue;
@@ -89,11 +102,12 @@
                     data.GroupsOfProperties = groups.slice(); data.GroupsOfProperties[position] = { ...original, properties: [...(original.properties || []), ...added] };
                     changes.push({ keyChain: ['data', 'GroupsOfProperties', position, 'properties'], oldValue: original.properties || [], newValue: data.GroupsOfProperties[position].properties, action: 'set' });
                     counts.groupsUpdated++;
+                    additions.push(...added.map(propertyGuid => ({ groupGuid: original.guid, propertyGuid })));
                 }
                 selectedName = original.name || 'Bez názvu skupiny';
             } else { append('GroupsOfProperties', imported); selectedName = group.name || 'Bez názvu skupiny'; }
         }
-        return { doc: changes.length ? { ...target, data } : target, changes, kind: 'groupLibrary', selectedName, counts };
+        return recordUserLinks({ doc: changes.length ? { ...target, data } : target, changes, kind: 'groupLibrary', selectedName, counts }, additions);
     }
     function createGroup(doc, name, properties) {
         name = String(name || '').trim();
@@ -116,7 +130,9 @@
                 unit: ensure('Units', 'unit', String(item.unit || '').trim() || '[-]'), customEnum: '' });
         }
         const group = { guid: uuid(), name, properties: source.data.Properties.map(row => row.guid) }; source.data.GroupsOfProperties.push(group);
-        return importGroups(doc, source, [{ group: group.guid, properties: group.properties }]);
+        const result = importGroups(doc, source, [{ group: group.guid, properties: group.properties }]);
+        const created = rows(result.doc, 'GroupsOfProperties').find(item => item.name === name);
+        return recordUserLinks(result, (created?.properties || []).map(propertyGuid => ({ groupGuid: created.guid, propertyGuid })));
     }
     function el(tag, text, parent) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (parent) parent.append(node); return node; }
     function dialog(titleText, id) {
@@ -391,5 +407,40 @@
         const cancel = el('button', 'Zrušit', actions); cancel.type = 'button'; cancel.onclick = () => box.close();
         box.showModal(); return box;
     }
-    global.DSS_GROUP_LIBRARY = { catalog, readSource, importGroups, createGroup, createPicker, importPicker, assignGroups, assignmentPicker, extendGroup, editProperty, propertyPicker };
+    function removePropertyFromGroups(doc, propertyGuid, groupGuids) {
+        const ids = new Set(groupGuids); if (!ids.size) throw new Error('Vyberte skupinu pro odebrání.');
+        for (const id of ids) if (!canRemoveProperty(doc, id, propertyGuid)) throw new Error('Původní vlastnosti zdrojové skupiny nelze odebírat.');
+        const changes = [];
+        const groups = rows(doc, 'GroupsOfProperties').map((group, index) => {
+            if (!ids.has(group.guid)) return group;
+            const properties = group.properties.filter(id => id !== propertyGuid);
+            changes.push({ keyChain: ['data', 'GroupsOfProperties', index, 'properties'], oldValue: group.properties, newValue: properties, action: 'set' });
+            return { ...group, properties };
+        });
+        const metadata = { ...doc.hbhEditor, addedGroupProperties: userLinks(doc).filter(link => !(ids.has(link.groupGuid) && link.propertyGuid === propertyGuid)) };
+        changes.push({ keyChain: ['hbhEditor'], oldValue: doc.hbhEditor, newValue: metadata, action: 'set' });
+        return { doc: { ...doc, data: { ...doc.data, GroupsOfProperties: groups }, hbhEditor: metadata }, changes, kind: 'groupPropertyRemoval', groupsChanged: ids.size };
+    }
+    function propertyRemovalPicker(doc, property, groupGuids, apply) {
+        const box = dialog('Odebrat vlastnost ze skupiny', 'group-property-remove-dialog');
+        el('p', 'Vlastnost: ' + (property.nameCz || property.nameIfc), box);
+        el('p', 'Odebrat lze pouze ručně přidaná přiřazení. Zdrojové vazby jsou pevné. Definice vlastnosti a přiřazení v ostatních skupinách zůstanou zachované; změna sdílené skupiny platí pro všechny objekty, které ji používají.', box);
+        const selected = new Set(), choices = rows(doc, 'GroupsOfProperties').filter(group => groupGuids.includes(group.guid) && (group.properties || []).includes(property.guid));
+        const removable = choices.filter(group => canRemoveProperty(doc, group.guid, property.guid));
+        const actions = el('div', undefined, box); actions.className = 'standard-toolbar';
+        const save = el('button', 'Odebrat z označených skupin', actions); save.type = 'button'; save.id = 'group-property-remove-save';
+        for (const group of choices) {
+            const allowed = canRemoveProperty(doc, group.guid, property.guid), label = el('label', undefined, box); label.className = 'group-assignment-choice';
+            const check = el('input', undefined, label); check.type = 'checkbox'; check.disabled = !allowed; check.dataset.removeGroupProperty = group.guid;
+            if (allowed && removable.length === 1) { check.checked = true; selected.add(group.guid); }
+            el('span', `${group.name} · ${group.guid} · ${allowed ? 'Přidané přiřazení' : 'Zdrojová vlastnost – chráněná'}`, label);
+            check.onchange = () => { if (check.checked) selected.add(group.guid); else selected.delete(group.guid); save.disabled = !selected.size; };
+        }
+        save.disabled = !selected.size;
+        const error = el('p', '', box); error.className = 'hbh-picker-error'; error.setAttribute('role', 'alert');
+        save.onclick = () => { try { apply(removePropertyFromGroups(doc, property.guid, [...selected])); box.close(); } catch (failure) { error.textContent = failure.message; } };
+        const cancel = el('button', 'Zrušit', actions); cancel.type = 'button'; cancel.onclick = () => box.close();
+        box.showModal(); return box;
+    }
+    global.DSS_GROUP_LIBRARY = { catalog, readSource, importGroups, createGroup, createPicker, importPicker, assignGroups, assignmentPicker, extendGroup, editProperty, propertyPicker, canRemoveProperty, removePropertyFromGroups, propertyRemovalPicker };
 })(window);
