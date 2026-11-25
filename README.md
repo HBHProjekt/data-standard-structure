@@ -1,60 +1,149 @@
-# HBH Standard Control
+# data-standard-structure
+View, edit and merge data standard.
 
-Kompletní verze pro publikování z 25. 11. 2026. Obsahuje všechny předchozí funkce editoru i nové vizuální motivy.
+## Lokální spuštění ve Windows
 
-## Jak aktualizovat stávající web
+V nadřazené složce spusťte dvojklikem `Spustit_spojovac.cmd`. Spustí lokální server pouze na `127.0.0.1`, vybere volný port a otevře prohlížeč. Okno serveru nechte otevřené; zavřením ho ukončíte. Použije Node.js dodaný s Codexem, případně Node.js z PATH. Bez instalace lze také otevřít `Spustit_spojovac.html` dvojklikem (samostatná kopie aktuální aplikace s vloženými skripty a styly). Obě varianty potřebují internet k načtení jQuery z `code.jquery.com`. Pro další úpravy kódu používejte server, který vždy čte aktuální zdrojové soubory; samostatné HTML je snímek aktuální verze.
 
-1. ZIP rozbalte. Nahrává se celý rozbalený obsah, nikoli archiv ani jeho nadřazená složka.
-2. V repozitáři otevřete místo s původním `index.html` a zvolte Add file → Upload files.
-3. Přetáhněte najednou `index.html`, `README.md` a složky `js`, `css`, `assets`, `structure`. Zachovejte jejich strukturu. V seznamu mají být cesty například `css/calm-theme.css`, `js/ui-themes.js` a `assets/hbh-logo-white.png`.
-4. Potvrďte Commit changes do větve, ze které se publikuje. Původní soubory se aktualizují, nové se přidají. Zachovejte stávající konfiguraci repozitáře a publikování, včetně případných `.github` a `CNAME`.
-5. Počkejte na dokončení dosavadního publikování v Actions a obnovte web přes Ctrl+F5.
+Server lze ověřit příkazem `node spojovac-server.cjs --smoke` z nadřazené složky.
 
-Aplikace je statická a sama nevyžaduje npm ani kompilaci. Publikování GitHub Pages proběhne podle dosavadního nastavení repozitáře; konfigurace publikování není součástí tohoto balíčku. Je potřeba přístup k `code.jquery.com` pro načtení jQuery.
+## Prohlížení standardu
 
-## Novinky v tomto balíčku
+Vlastnosti zobrazují také `nameHBH` / `NameHBH` jako štítek **HBHBIM: příkaz** (například `StationingFrom`, `QuantityVolume`). Je vidět v objektovém i skupinovém pohledu, na kartách párování a ve spárovaných dvojicích. Příkazy lze hledat v detailu vlastností a v párování. Velikost písmen názvu pole se nepřepisuje, příkazy zůstávají zachované při spojování a slouží jako popis automatizací HBHBIM; prohlížeč je nespouští.
 
-- **SAI:** růžovo-tyrkysový plakátový motiv.
-- **HEAVY:** kultivovaný antracitový motiv s červenými akcenty, přehlednějšími tabulkami, formuláři a stavovými barvami. Po načtení dat lze sbalit hlavní banner.
-- **KLID:** samostatný světlý motiv s teplým pozadím, modrými akcenty, bannerem MÉNĚ ŠUMU. VÍCE SOUVISLOSTÍ. a jemnou geometrií vazeb.
-- Žluté akcenty HEAVY při najetí na akční tlačítka, ve focusu polí, odkazech a rozbalovacích šipkách. Chyby a zakázané prvky si zachovávají vlastní rozlišení.
-- Originální bílé logo HBH pro HEAVY; v SAI a KLID zůstává barevná varianta. Obě varianty mají průhledné okolí.
-- Přehledné kapitálkové nadpisy sekcí a dialogů s většími rozestupy v SAI a HEAVY.
-- Přepínač SAI / HEAVY / KLID pamatuje volbu v místním úložišti prohlížeče. Změna vzhledu nijak nemění data ani párování.
-- Skrytý UI easter egg: třikrát rychle klikněte na logo HBH.
+V prohlížeči je pro přiřazení samostatný sloupec **HBHBIM automat** s tlačítkem **Vybrat automat**. Výběr obsahuje unikátní příkazy ze všech načtených standardů a jejich vlastnosti; hledá podle kódu i názvu vlastnosti. Příkaz lze vybrat z nabídky, zadat nový nebo odebrat. Změna se použije až po **Uložit přiřazení**, **Zrušit** nic nemění. Upravený dokument se stáhne příslušným tlačítkem **Stáhnout DSS1 / DSS2 / výsledek**.
 
-Zahrnuté jsou také dřívější úpravy párování objektů a vlastností, import JSON/IDS, editace definic, 85 HBHBIM automatů a doplňování `nameHBH` z IFC názvu, správa a odstranění číselníků, tvorba/import skupin, přiřazování skupin k objektům i odebrání uživatelsky přidaných vlastností s ochranou zdrojových vazeb.
+Přiřazení je na sdílené definici vlastnosti, proto platí pro všechny objekty používající tento GUID. Původní zápis `nameHBH` či `NameHBH` se zachová, nová přiřazení používají `nameHBH`. Ostatní pole, hodnotové požadavky a objektové defaulty se nemění. Úprava zachová aktuální pohled a hotovou matici párování. Při změně vstupního souboru během otevřeného výběru se stará úprava odmítne, aby nepřepsala nový soubor.
 
-## Struktura pro kořen repozitáře
+Nahoře pod načtením souborů je hlavní prohlížeč. **Prohlédnout DSS1 / DSS2 / výsledek** otevře okamžitě přehled bez potvrzování pomalého načítání. Záložky:
 
-```text
-index.html
-README.md
-assets/
-  hbh-logo.png
-  hbh-logo-transparent.png
-  hbh-logo-white.png
-css/
-  styles.css
-  icy-theme.css
-  heavy-theme.css
-  calm-theme.css
-js/
-  ui-themes.js
-  app.js
-  dss-model.js
-  dss-validation.js
-  group-library.js
-  hbh-automations.js
-  ids-import.js
-  manual-matching.js
-  property-matching.js
-  standard-documents.js
-  standard-viewer.js
-structure/
-  structure.json
+- **Objekty → požadované vlastnosti**: hledání podle názvu, CCI kódu a skupiny objektů; detail jednoho objektu se skupinami vlastností. Ukazuje datové typy, jednotky, povinnost, instrukce, omezení hodnot a číselníky. Explicitní pravidla IDS se vyhodnocují podle vazby konkrétního objektu, nikoli podle všech pravidel sdílené definice vlastnosti. Vlastnost bez explicitního IDS pravidla je označená jako „Definice DSS“, bez domýšlení povinnosti.
+- **Skupiny → vlastnosti**: logické skupiny podle názvu, jejich definice vlastností a počet používajících objektů. Stejnojmenné varianty skupin se zobrazí jako společný přehled; konkrétní požadavky se prohlížejí přes objekty.
+- **Číselníky hodnot**: číselníky `values` i `enumList[].value`, hledání v hodnotách a postupné zobrazení po 100 položkách. Neoznačené číselníky dostanou v přehledu název podle vlastností, které je používají; zdrojová data se nemění.
+
+Prohlížeč používá indexy GUID, seznamy po 60 položkách a detaily jen pro vybraný objekt či skupinu. Zpočátku jsou rozbalené první dvě skupiny; ostatní, číselníky a technické záznamy se vykreslují až při otevření. Skupiny lze hromadně rozbalit/sbalit a v detailu hledat vlastnost. Velké tabulky vlastností se doplňují po 40 řádcích. Načtený dokument a indexy se znovu používají, dokud se data nezmění. Také importní diagnostika a kontrola odkazů se zbytečně neopakují pro stejný dokument.
+
+Původní editor je dostupný jako **Technický editor celého JSONu**, s návratem přes **Zpět na přehled standardu**. Jen tento explicitní režim vytváří celý strom pro editaci. Samotné procházení dokument nemění. Explicitní editace HBHBIM přiřazení a objektových defaultů se ukládají přímo do pracovního dokumentu; nikdy se neskládá zpět z neúplného DOM. Přepnutí ukládá změny skutečného vlastníka editoru; stažení jiného souboru ani nahrazení vstupu nepřepíše nový soubor starým pohledem.
+
+IDS parser již nevytváří nepoužívanou kopii celého XML každé specifikace ani kopie již zpracovaných facet a omezení. Nezpracovatelná XML data a nepodporované restrikce zůstávají uložené v `raw`. Strukturované podmínky, instrukce, povinnosti a omezení hodnot se zachovávají.
+
+Testovací DOM při 10 000 syntetických objektech obsahuje v úvodním pohledu méně než 1 500 uzlů i s ovládáním automatů a objektových defaultů. Jde o kontrolu omezeného rozsahu vykreslování v paměti, nikoli měření načítání v reálném prohlížeči. Testy na skutečném DSPS páru navíc ověřují všechny tři pohledy, číselníky, rozsah pravidel a bezpečné přepínání editoru.
+
+## Ruční párování JSON / IDS
+
+1. Do souboru 1 načtěte základní standard (například `SFDI_HBH_2025_06_SLOUCENY.json`), do souboru 2 IDS.
+2. Klikněte na **Načíst / obnovit párování**. Zobrazí se dva sloupce: vlevo **DSS1**, vpravo **DSS2**. Objekty se shodným GUID jsou automaticky zařazené do seznamu dvojic s označením **Shoda GUID** a nevybírají se znovu ručně. Tyto vazby fungují i bez otevření ručního párování, včetně menšího režimu exportu. Duplicitní GUID, které by vytvořilo nejednoznačnou vazbu, se odmítne.
+3. V každém sloupci najděte objekt (hledání funguje i bez diakritiky) a kliknutím ho označte. V protějším sloupci se nahoře zobrazí **Doporučené protějšky** a další kandidáti se podle relevance seřadí v seznamu. Funguje to oběma směry, nezávisle na aktuálním hledání. Návrhy zohledňují normalizovaný název, české koncovky (například Svodidla / Svodidlo), společná slova, podobnost zápisu, celý typový kód a CCI komponentu — první tři písmena kódu bez `%`, například `%FQD01` a `%FQD003` patří do `FQD`. U obecného dodatku „a příslušenství“ se porovná hlavní název a u návrhu se tento postup uvede. Důvody shody jsou vidět přímo na kartě; odlišná CCI komponenta a rozpoznaný záporný tvar názvu snižují pořadí a zobrazí upozornění. Jde o lokální heuristiku, nikoli o jazykový model nebo úplný slovník českých slov. Návrh se automaticky nepotvrdí; vyberte ho a použijte **Párovat**.
+4. Uprostřed klikněte na **Párovat ↔**. Objekty zmizí z výběru a dvojice se přidá do seznamu **Spárované objekty** pod sloupci. Tlačítko **Zrušit vazbu** vrátí oba objekty do výběru.
+5. Opakujte pro další objekty. **Uložit mapu** stáhne převodní mapu; **Načíst mapu** ji znovu načte. Identifikátory IDS umožňují načíst mapu i po novém importu stejného IDS s novými interními GUID.
+6. **Merge JSONs** použije potvrzené vazby. Při importu IDS je standardně zapnuté **Pouze spárované objekty z IDS**: nespárované specifikace, jejich vlastnosti a nepoužité číselníky se do výsledku nepřidají. Pro připojení celého IDS tuto volbu vypněte. Po sloučení se zobrazí velikost výsledného JSONu (včetně formátování pro stažení), počet objektů a vlastností. Prohlédněte nebo stáhněte výsledný JSON obvyklými tlačítky.
+
+Párování je volitelné a používá vazby 1:1 mezi objekty. Druhá tabulka **Párování vlastností** umožňuje ruční vazby vlastnost–vlastnost; varianty požadavků z DSS2 mohou sdílet jednu základní definici DSS1. GUID, název a definice základního objektu zůstávají zachované, odpovídající požadavky a podmínky IDS se připojí jako `idsMappings`. Nepřiřazené objekty druhého souboru se přidají při běžném spojování JSONů nebo po vypnutí volby Pouze spárované objekty z IDS. Po změně vstupů je nutné párování obnovit (uloženou mapu lze opět načíst). Mapa odmítne neplatné či nejednoznačné odkazy. Nové mapy mají verzi 3 a obsahují objektové vazby `pairs` i samostatné vazby vlastností `propertyPairs`. Starší objektové mapy verzí 1/2 lze dále načíst. Starý prototyp vazeb vlastností uvnitř objektové dvojice se odmítá, aby nedošlo k tiché změně významu.
+
+Párování zachovává IDS požadavky jako metadata; samo nekontroluje splnění IDS na IFC modelu ani neřeší případné rozpory datových typů nebo hodnot mezi oběma standardy. Pro menší výsledek se odstraní redundantní kopie XML v `raw` tam, kde je parser přečetl do strukturovaných polí. Pokud hodnotu nelze interpretovat, původní XML zůstává zachované. Definice základní vlastnosti v `Properties` zůstává zachovaná; odpovídající IDS pravidla jsou v jejích `idsMappings`. Rozhodující rozsah pravidel je uložen u konkrétního objektu v `ids.propertyRules` nebo `idsMappings[].propertyRules`: každé pravidlo obsahuje GUID výsledné vlastnosti, původní sadu a celý strukturovaný IDS požadavek včetně kardinality, datového typu, instrukcí a omezení hodnot. `propertyRequirements` zůstává seznamem GUID výsledných vlastností. Pravidlo pro jeden objekt se tak nevztáhne automaticky na všechny uživatele společné vlastnosti. Vstupní soubory se nemění.
+
+## Párování vlastností a matice
+
+Pod objekty je samostatná tabulka se dvěma sloupci. Oba seznamy zobrazují hierarchii **skupina → vlastnosti** a mají samostatný filtr skupiny. Vlastnosti lze hledat podle názvu, IFC názvu, sady, GUID a použití u datového objektu. Karty ukazují i datový typ, jednotku, instrukce a hodnotová omezení IDS. Párování vlastností vyžaduje přesně stejný `nameIfc` (pokud chybí, použije se `nameCz`); porovnání zachovává diakritiku a velikost písmen, normalizuje pouze Unicode a krajní mezery. Fuzzy podobnost, různé koncovky ani podobné názvy se pro vlastnosti nepoužívají. Skupina a datový typ slouží k rozlišení kandidátů. `SingleValue` v JSONu popisuje způsob uložení hodnoty; nepovažuje se za rozpor vůči primitivnímu typu `IFCLABEL` v IDS. Pro porovnání se používají rodiny hodnotových typů z `DataTypes`.
+
+- Vyberte vlastnost v DSS1 i DSS2 a klikněte na **Párovat vlastnosti ↔**. Potvrzená vazba je v seznamu níže a lze ji zrušit. Zdrojová vlastnost DSS2 se spotřebuje jednou; základní vlastnost DSS1 lze použít pro více variant pravidel.
+- **Automaticky spárovat stejné názvy** jedním kliknutím přidá jednoznačné vazby podle přesného názvu. Jednoznačná shoda názvu i skupiny se přiřadí i při rozdílném typu: původní typ DSS1 se nemění a typ IDS zůstává součástí jeho požadavku. Rozdíl je vidět v tabulce. Při více stejných názvech má přednost shodná skupina. Pokud IDS používá jinou skupinu, ale stejný název má právě jednu základní definici bez rozporu datového typu, lze ji také přiřadit. Nejednoznačné případy zůstávají ruční a nesmí se přepárovat na odlišný název. Alternativní **Navrhnout jednoznačné shody** zachovává náhled a hromadné potvrzení. Automatické vazby jsou označené a jejich způsob se ukládá v matici.
+- **Uložit matici vlastností / Načíst matici vlastností** pracuje jen s vlastnostmi a nemění objektové vazby. Hlavní **Uložit mapu / Načíst mapu** ukládá a načítá obě tabulky společně.
+- Matice používá stabilní podpis požadavku IDS, nikoli jeho náhodný interní GUID. U specifikace bez `identifier` je náhradním klíčem název a IFC verze. Matice funguje po opětovném importu stejného IDS; změněné nebo nejednoznačné požadavky se odmítnou.
+
+Při spojení se nahradí odkazy za GUID základních vlastností a zachová se hierarchie DSS1. Pokud je přiřazená vlastnost už u základního objektu dostupná, její duplicitní IDS skupina se vůbec nepřidá. Pro nové vlastnosti se využije stejnojmenná skupina DSS1; pokud ji sdílejí jiné objekty, rozšíření dostane vlastní kopii jen pro daný objekt, aby se nové požadavky nešířily jinam. Jejich původní definice, výchozí hodnoty a číselníky zůstávají zachované. Nepřiřazené vlastnosti vybraných objektů se přidají. Režim **Pouze spárované objekty z IDS** nadále určuje, které objekty a jejich pravidla se přenesou; samotná matice vlastností neznamená potvrzení objektových vazeb.
+
+Nový integrační test používá `DS/DSPS_Datovy_standardD1.json` a `DS/DS-ŘSD-DSPS 2025-11 (SSUD).ids`. Ověřuje 53 jednoznačných objektových vazeb, 779 vazeb vlastností a 2 869 objektově vymezených požadavků. Kontroluje také sdílenou základní vlastnost s rozdílnými pravidly u dvou objektů, absenci duplicitních definic, zachování vstupů a obnovení matice po novém importu IDS.
+
+## Typový aspekt datového objektu
+
+V pohledu **Objekty → požadované vlastnosti** je v detailu objektu pole **Typový aspekt**. Lze zadat nový kód, upravit stávající nebo ho vymazat a potvrdit tlačítkem **Uložit typový aspekt** či Enterem. Ukládá se přímo `DataObjects[].typeAspectCode`, GUID a ostatní obsah objektu se nemění. Po uložení se aktualizuje kód v přehledu, hledání i návrhy párování; potvrzené vazby zůstávají zachované. Upravený standard je třeba stáhnout příslušným tlačítkem pro DSS1, DSS2 nebo výsledek. Klasifikace IDS se nepřepisují; po vymazání vlastního kódu se případně opět zobrazí kód odvozený z IDS.
+
+## Výchozí hodnoty podle datového objektu
+
+V pohledu **Skupiny → vlastnosti** lze ve sloupci **Default vlastnosti** upravovat přímo stávající `Properties.defaultValue`. Hodnota se sdílí mezi všemi objekty používajícími tuto vlastnost, pokud nemají vlastní objektový přepis. Číselníkové hodnoty se vybírají ze seznamu. Tlačítko **Vymazat default** nastaví stávající pole na prázdný řetězec. Změny se uloží do právě otevřeného standardu a jeho staženého JSONu.
+
+V prohlížeči **Objekty → požadované vlastnosti** má každá vlastnost sloupec **Default pro tento objekt**. Lze převzít obecný default, zadat vlastní hodnotu nebo zvolit **Bez výchozí hodnoty**. U číselníků se vybírá z hodnot číselníku. Změna pole se ukládá po potvrzení výběru nebo opuštění textového pole do právě otevřeného DSS1, DSS2 či výsledku; trvalou kopii uloží příslušné tlačítko pro stažení JSONu.
+
+Stávající `Properties.defaultValue` se nemění. Nové volitelné pole `DataObjects[].propertyDefaults` obsahuje záznamy `{ "property": "GUID vlastnosti", "defaultValue": "hodnota" }`. Chybějící záznam znamená převzetí obecného defaultu. Explicitní `null` vypíná obecný default pro tento objekt; prázdný řetězec je vlastní prázdná hodnota. Textový vstup ukládá řetězec, výběr z číselníku zachovává původní JSON typ hodnoty. Návrat na obecný default odstraní přepis a prázdné pole `propertyDefaults` se odstraní celé. Pouhé prohlížení pole nepřidává.
+
+Merge přemapuje odkazy podle matice vlastností, shodné objektové defaulty sloučí a při rozdílných hodnotách pro stejnou výslednou dvojici objekt–vlastnost se zastaví s vysvětlením. Vstupy se při neúspěšném mergi nemění. Konzument standardu (například HBHBIM) musí novou prioritu hodnot výslovně implementovat; tato aplikace pouze edituje a exportuje definice.
+
+Ověření editoru, persistence, izolace sdílených vlastností a merge: `node js/property-defaults.test.cjs`.
+
+## Ověření
+
+Spojovač nevynucuje vlastní JSON schéma: nekontroluje povinná pole, názvy polí ani podobu číselníků. Strukturu dodaného standardu respektuje. Hlídá jen základní čitelnost souboru, identifikátory a odkazy potřebné pro správné spojení.
+
+Číselníky `CustomEnums` podporují jak `values: [hodnota, …]`, tak `enumList: [{value: hodnota}, …]`. Název číselníku je nepovinný. Podporované zápisy se nepřepisují ani nehlásí; spojovač nevynucuje vlastní požadavky na strukturu ani obsah číselníků.
+
+JSON cesta, aktuální technická hodnota a další technické údaje jsou až v rozbalovacích **Technických podrobnostech**. Každá skutečná chyba obsahuje české vysvětlení, název a GUID záznamu, tabulku, přesnou cestu k poli (indexy v JSON cestě začínají nulou), aktuální hodnotu a návod, kde hledat správnou definici. U vlastností, skupin a číselníků se dohledávají také datové objekty, které je používají. Tlačítko **Ukázat záznam** otevře samostatný náhled původního řádku jen pro čtení, bez změny standardu nebo obsahu editoru. Další chyby ve velké skupině lze odkrývat po 30. Kontrola nově rozlišuje také odkaz do nesprávné tabulky a duplicitní GUID.
+
+SFDI používá podporované varianty grafických číselníků: `GeometricalTypes.typeOfObject` místo `type`, barvu definovanou přes `r/g/b` bez `name` a `GraphicalPrecisions.horizontalPrecision/verticalPrecision` bez `name`. Tyto záznamy se nemění a vůbec se nehlásí: jde o běžnou podporovanou strukturu, která nevyžaduje zásah uživatele. U původního SFDI souboru se tak původních 40 hlášení o chybějících polích vysvětluje jako 8 geometrií, 17 barev a 15 přesností; kontrola tohoto vstupu nehlásí žádné problémy ani informační zprávy o těchto variantách. Požadavky na názvy a přítomnost polí určuje zdrojová aplikace, nikoli spojovač.
+
+Kontrola importu odděluje chyby od varování a opakovaná hlášení seskupuje podle typu. Každá skupina ukáže počet a nejvýše 30 ukázek. Uložená metadata IDS mají vlastní strukturu: například `attributes.dataType = IFCTEXT` není GUID tabulky DSS. Validátor v metadatech kontroluje pouze explicitní odkazy `propertyRequirements`; běžné odkazy DSS nadále kontroluje celé.
+
+Celý vstupní IDS lze prověřit příkazem `node audit-ids.cjs` z nadřazené složky, případně s cestou k jinému IDS jako argumentem. Audit používá skutečný importér a validátor JSONu, XML čte pomocí Pythonu a zpracovává specifikace po dávkách. Nejde o úplnou validaci IDS podle XSD. U přiloženého `DSS_v2_ARCHICAD_IMPORT.ids` bylo ověřeno všech 6 184 specifikací: 15 180 varování na nepřímý převod klasifikací a entit, žádná chyba převodu ani reference JSONu.
+
+Po sloučení se zobrazí souhrn způsobu párování a zapíše se také do výsledného JSONu v kořenovém poli `mergeReport`. Obsahuje počty datových objektů spojených podle GUID a ručně, počty objektů bez protějšku na každé straně a počty nespárovaných objektů DSS2 přidaných či vynechaných. Hláška „Všechno se povedlo napárovat na základě shody GUID“ se zobrazí pouze pokud má každý datový objekt z obou vstupů právě jeden protějšek se stejným GUID a vstupy nejsou prázdné. Výrok se týká datových objektů; `inputGuidMatchesByTable` navíc zaznamenává počty shod GUID ve vstupních tabulkách (včetně vlastností). Automatické shody pokračují původním slučováním podle GUID; ruční vazby používají připojení ke zvolenému základnímu objektu. Uložení ruční mapy obsahuje jen ruční vazby, protože shody GUID se vždy odvodí ze vstupů.
+
+Regresní test používá skutečný SFDI JSON a čtyři specifikace s vlastnostmi ze skutečného IDS ve složce `DS`. Potřebuje Node.js a Python 3 (standardní knihovnu pro čtení XML):
+
+```powershell
+$env:DSS_TEST_PYTHON = 'cesta/k/python.exe'
+node js/manual-matching.test.cjs
+node js/property-matching.test.cjs
 ```
 
-Všechny uvedené soubory jsou potřeba k zachování celé aplikace. Nahrajte celý balíček; samotný nový `index.html` nestačí. Testovací data, zdrojové C# a WMF podklady, testy a lokální spouštěče nejsou pro publikování potřebné a v archivu nejsou.
+V záložce **Číselníky hodnot** lze přidat nový číselník nebo přes **Upravit číselník** změnit jeho název a hodnoty. GUID, vazby vlastností a doplňující metadata zůstávají zachovaná, stejně jako metadata ponechaných hodnot. Hodnoty se upravují jednoduše po řádcích bez přepínače formátu. Ponechané položky automaticky zachovávají původní datové typy a metadata; nově zadané položky jsou text, takže se například kód 001 nezmění na číslo. Úprava se projeví u všech vlastností, které číselník používají; jejich výchozí hodnoty se automaticky nepřepisují.
 
-Kontrola před zabalením zahrnuje syntaxi JavaScriptu, přepínání/ukládání motivů, sbalování banneru a 54 zvolených kombinací kontrastu barev dle prahů WCAG AA. Nejde o úplný vizuální audit stránky v prohlížeči. Po publikování doporučujeme ověřit načtení vlastního standardu, všechny tři režimy a stažení upraveného JSONu.
+**Exportovat tento číselník** stáhne jednu definici; **Exportovat knihovnu číselníků** stáhne všechny definice aktuálního standardu, včetně nepoužívaných. Přenosný JSON má tvar `{format: "DSS-CustomEnums", version: 1, CustomEnums: [...]}` a obsahuje původní GUID i metadata. Import přijímá tento export, pole definic i celý DSS JSON. Před použitím zobrazí seznam s hledáním a zaškrtáváním konkrétních číselníků; výchozí výběr je prázdný. **Vybrat nalezené** označí položky odpovídající hledání. Položky se stejným GUID se ponechají, pokud uživatel výslovně nezapne náhradu. Shodný název s jiným GUID znamená samostatnou definici. Import nepřiřazuje číselníky automaticky k vlastnostem. Upravený projekt se ukládá běžným tlačítkem **Stáhnout**; export knihovny slouží k přenosu samotných číselníků. Regresní test: `node js/enumerations.test.cjs`.
+
+Výběr **HBHBIM automatu** obsahuje vestavěný katalog 84 identifikátorů z dodaného `podkladyGITHUB/PropertyWizard.cs`: přímé aktivní případy hlavního přepínače `NameHBH` a `LengthCalculationMethod` z druhého průchodu. Vnořené přepínače pro materiály nebo úseky do katalogu nepatří. České zobrazované názvy jsou v `js/hbh-automations.js`; v přehledu i výběru jsou první, pod nimi je původní kód. Kód se ukládá přesně podle zdroje, včetně historických zápisů `ShatfDiameter` a `Reflextion`. Katalog doplňují vlastní příkazy z načtených standardů. Vyhledávání funguje podle českého názvu i kódu; test pokrytí zdrojových případů a zobrazení: `node js/hbh-automations.test.cjs`.
+
+Každý z 84 automatů má také stručný český popis výstupu a jeho zdroje podle dodaného `PropertyWizard.cs`. Ve výběru je popis viditelný přímo u položky i aktuální volby; v tabulce jej otevře **Co vyplní?**, případně najetí na kód. Hinty jsou pouze nápověda rozhraní a nepřidávají se do JSONu standardu. U vlastních neznámých příkazů se výstup neodhaduje. Popisy zachycují i skutečná omezení dodané verze: `BuildSpace` nic nezapisuje, `PipeInnerDiameter` nalezený průměr nepřiřadí vlastnosti a `PipeSlope` nepřevádí sklon na procenta.
+
+V tabulce vlastností je vedle **HBHBIM automatu** samostatný sloupec **Číselník hodnot**. Tlačítko **Vybrat číselník** nabízí knihovnu právě upravovaného standardu, hledání podle názvu, použití, GUID i hodnot a rozbalovací náhled obsahu. Volba se zapíše až přes **Uložit přiřazení** jako `Properties[].customEnum`; **Odebrat číselník** odstraní pouze vazbu, nikoli definici z knihovny. Přiřazení patří sdílené definici vlastnosti a platí ve všech objektech, které ji používají. HBHBIM příkaz, výchozí hodnoty, datový typ a požadavky IDS se tím nemění. Po uložení se obnoví nabídka výchozích hodnot z přiřazeného číselníku. Číselník z jiného souboru je nejprve třeba importovat v záložce **Číselníky hodnot**.
+
+U datových objektů jsou také tlačítka **Navrhnout jednoznačné shody objektů** (náhled bez změny vazeb) a **Automaticky spárovat stejné názvy objektů**. Úplná shoda používá název `nameCz`, případně `name`, se zachováním diakritiky, velikosti písmen a interpunkce; sjednocuje jen Unicode NFC a okrajové mezery. Protějšek musí být jednoznačný v obou směrech. Pokud obě strany uvádějí skupinu nebo typový CCI kód, nesmějí si odporovat. Shodná skupina či kód mohou rozlišit více objektů stejného názvu; nejasné případy zůstávají bez vazby. Jednoznačnost se posuzuje nad celými vstupy, aby obsazení jedné duplicitní položky nevyvolalo falešnou jistotu pro zbývající. Existující GUID a ruční vazby se zachovávají. Vazby mají označení **Úplná shoda názvu**, lze je jednotlivě zrušit a uložit do matice včetně `method: "name"`. Souhrn sloučení uvádí `matchedByName` zvlášť od GUID a ručního párování. Částečné shody názvů, tvarů slov a CCI komponent zůstávají jako návrhy v protějším sloupci po výběru objektu a nikdy se hromadně nepotvrzují. Test: `node js/object-matching.test.cjs`.
+
+Náhled návrhů objektů zobrazuje všechny dvojice jako karty DSS1 vlevo a DSS2 vpravo, včetně názvu, skupiny a typových kódů. Každý řádek má **Potvrdit dvojici** a zaškrtávátko pro hromadné potvrzení. Dostupné jsou **Označit nalezené**, **Potvrdit označené** a **Potvrdit všechny návrhy**. Vyhledávání zachovává výběr i u momentálně skrytých návrhů; počet označených zahrnuje celý výběr. Po potvrzení se dvojice přesunou do spárovaných objektů a zbývající návrhy zůstávají otevřené. Původní limit náhledu na 20 návrhů byl odstraněn; celý seznam má vlastní posuvník.
+
+V záložce **Skupiny → vlastnosti** jsou tlačítka **Přidat skupinu a vlastnosti** a **Importovat skupiny z JSON / IDS**. Nová skupina má název a libovolný počet řádků vlastností s českým/IFC názvem, datovým typem a jednotkou. Import se celý ovládá v dialogu: vyberte soubor, hledejte skupiny nebo vlastnosti a označte celé skupiny, případně rozbalte výběr jednotlivých vlastností. Výchozí výběr je prázdný a zůstává zachovaný při hledání. Přenášejí se jen vybrané definice a jejich potřebné datové/IFC typy, jednotky a číselníky; metadata vlastností včetně HBHBIM, defaultů a IDS pravidel zůstávají zachovaná. Existující definice se nepřepisují: úplně stejné definice se znovu použijí, konfliktní GUID dostanou nové identifikátory a odkazy se přesměrují. Operace je celá použita až potvrzením; při chybě se původní dokument nemění. Skupiny se přidávají do knihovny, automaticky se nevážou k datovým objektům. Výsledek se uloží běžným stažením standardu. Test: `node js/group-library.test.cjs`, skutečný import skupiny z IDS do DSPS také ověřuje `js/property-matching.test.cjs`.
+
+Na první záložce **Objekty → požadované vlastnosti** je tlačítko **Přiřadit skupiny objektům**. Dialog nabízí výběr skupin vlevo a datových objektů vpravo; aktuální objekt je předvybraný. Lze vybrat jeden objekt, libovolnou množinu nebo přes **Všechny datové objekty** celý standard bez ohledu na filtr. **Označit nalezené** vybírá jen položky odpovídající hledání; výběr zůstává zachovaný i při změně filtru. Potvrzení přidá odkazy do `DataObjects[].loin.nongraphical.groupsOfProperties`, existující skupiny neodstraňuje ani neduplikuje. Grafické požadavky, metadata IDS a objektové defaulty zůstávají zachované. Nové vazby se projeví v přehledu objektu a uloží do stahovaného JSONu.
+
+Při načtení standardu se chybějící HBHBIM automat doplní také z `nameIfc` / `nameIFC`, pokud hodnota přesně odpovídá anglickému identifikátoru v dodaném PropertyWizardu. Velikost písmen kódu je významná, odstraňují se pouze okrajové mezery; české aliasy, podobné nebo neznámé kódy se nepřebírají. Jakékoli vyplněné `nameHBH` / `NameHBH` má přednost, včetně vlastních příkazů. Nové přiřazení se zapíše do kanonického pole `nameHBH` a je součástí stahovaného JSONu, nikoli jen náhledu. Zdrojové `nameIfc` se nemění. Pravidlo funguje i při importu skupin z dalšího souboru. Změny provedené uživatelem během práce se znovu automaticky nedoplňují až do dalšího importu souboru.
+
+Katalog nově obsahuje také **QuantityVolume – Objem** z dodaného `HBHBIMClassification.cs`, celkem tedy 85 identifikátorů. Hint uvádí výpočet přes `AutoProperties.SolidVolume`, zápis na tři desetinná místa a podmínku `<auto>`. Kód se rozpoznává i při doplňování `nameHBH` z IFC názvu.
+
+V detailu **Skupiny → vlastnosti** je **Přidat vlastnosti do skupiny**. Dialog umožňuje vytvářet nové definice nebo vybírat již existující vlastnosti standardu. Pokud přehled slučuje několik stejnojmenných variant, vybírá se konkrétní GUID skupiny; doplní se pouze tato varianta a projeví se ve všech objektech, které na ni odkazují. GUID skupiny, dosavadní vlastnosti a vazby zůstávají zachované. Stejná vazba se nepřidává podruhé a rozdílné vlastnosti se shodným IFC názvem ve stejné skupině se odmítají.
+
+U vlastností v objektovém i skupinovém pohledu je **Upravit vlastnost**. Dialog mění český a IFC název, datový typ, IFC typ, jednotku a popis. Zachovává GUID, automat, číselník a defaulty; potřebné nové typy či jednotky přidá do knihovny. Úprava sdílené definice platí ve všech používajících skupinách a objektech. Změna typu sama nepřevádí hodnoty defaultů ani číselníku, což dialog výslovně uvádí.
+
+V pohledu **Skupiny → vlastnosti** lze přes **Odebrat ze skupiny** odebrat pouze vlastnosti přidané uživatelem do dané skupiny. Původní přiřazení ze zdrojového JSONu a skupiny importované z externích podkladů jsou chráněné. Odebírá se vazba v konkrétní skupině, nikoli sdílená definice vlastnosti nebo její další použití. Pokud je skupina společná více objektům, změna jejího složení se projeví u všech těchto objektů. Stejnojmenné varianty dialog rozlišuje podle GUID a zdrojové varianty nedovolí označit.
+
+Původ nových ručních vazeb se ukládá v kořenovém `hbhEditor.addedGroupProperties` jako dvojice `groupGuid` / `propertyGuid`. Díky tomu ochrana přetrvá stažení a opětovné načtení souboru. Bez záznamu původu se všechna existující přiřazení považují za zdrojová a chráněná; to platí i pro dodatečné vlastnosti uložené starší verzí editoru. Nově ručně vytvořené skupiny mají své vlastnosti označené jako uživatelské. Při neplatném nebo smíšeném pokusu o odebrání se nic nepřepíše. Test ochrany, perzistence a odstranění vazeb je součástí `js/group-library.test.cjs`.
+
+Vizuální návrh **Standard Control** používá růžovou, tyrkysovou a krémovou paletu, plakátovou typografii a tiskové rastry inspirované obdobím Scaled and Icy. Výraznější vzhled je oddělený v `css/icy-theme.css`. Přepínač **SAI / HEAVY / KLID** v hlavičce mění režim okamžitě bez obnovení stránky; rozpracované dokumenty a párování se zachovávají. Hlavička a druhý řádek akcí zůstávají stálé. KLID má vlastní světlý banner s jemnou geometrií vazeb. Grafika je vytvořená v HTML/CSS, nepoužívá další externí fonty ani obrázky. Samostatné HTML obsahuje vložené všechny čtyři styly. Při příštím publikování musí být zahrnutý také nový `css/icy-theme.css`.
+
+Po změnách zdrojů lze samostatné HTML obnovit příkazem `node build-spojovac.cjs` z nadřazené složky.
+
+## Vizuální frekvence a identita HBH
+
+Režim HEAVY používá černou, šedou, špinavě bílou a červené akcenty inspirované obdobím Heavydirtysoul / Blurryface. Přepínač nabízí SAI, HEAVY a KLID; volba je uložená v místním úložišti prohlížeče. Při nedostupném úložišti funguje dál bez zapamatování. Žádný režim nemění pracovní dokumenty ani párování.
+
+Logo bylo z původního WMF převedené do PNG s průhledným okolím (`assets/hbh-logo-transparent.png`); původní barvy a kresba zůstaly zachované. Je součástí podpisu v hlavičce, v tmavém režimu na světlé pásce. Tři rychlá kliknutí na logo otevřou skrytou řídicí místnost, kterou lze zavřít tlačítkem nebo Escape. Efekt čítá 21 sloupců signálu, respektuje omezený pohyb a nepracuje s daty standardu.
+
+Pro publikování jsou kromě původních souborů potřeba `css/icy-theme.css`, `css/heavy-theme.css`, `js/ui-themes.js` a nové průhledné logo. Samostatné HTML je obsahuje vložené. Ověření přepínání, úložiště a easter eggu: `node js/ui-themes.test.cjs`.
+## Kultivované motivy KLID a HEAVY
+
+KLID je samostatný světlý motiv v `css/calm-theme.css`, omezený na `data-visual-mode="calm"`. Používá teplé pozadí #F2F1ED, bílé panely, ohraničení #D5D9DC, text #29333D, modrý akcent #5698C4 a drobný červený akcent #C64C4C. Pro malé texty tlačítek a chybové zprávy používá tmavší odvozené odstíny s vyšším kontrastem. Banner uvádí MÉNĚ ŠUMU. VÍCE SOUVISLOSTÍ. a pravý panel KAŽDÁ VAZBA MÁ SMYSL. Geometrické spojnice a body jsou vytvořené přímo jako statické SVG, bez fotografie nebo loga kapely.
+
+HEAVY zachovává původní industriální kompozici. Sjednocené proměnné `--heavy-*` definují pozadí #121416, panely #1D2023, zvýrazněné plochy #25292D, ohraničení #34383D, hlavní text #EAE6DC, sekundární text #B7B9BD a červené akcenty #C9283E / #F05262. Malý text na primárních červených tlačítkách má světlejší odstín #FFF9EE kvůli AA kontrastu. Běžná tlačítka jsou antracitová; aktivní záložky a výběry mají červenou linku. Datové tabulky mají střídání odstínů, svislé oddělení sloupců a jednotné styly editace. Úspěch, varování, chyba a informace mají samostatné barvy a tam, kde jsou zobrazené, také ikonu a text.
+
+V HEAVY je po načtení standardu dostupné Sbalit banner / Rozbalit banner. Jde pouze o stav prezentace; skript pozoruje přítomnost uložených vstupů a pracovní JSON ani párování neupravuje. SAI se tato úprava nedotýká. Logo HBH si ve všech režimech zachovává původní barvy. KLID ani HEAVY nepoužívají dekorativní animaci signálu a blikání výstupu nahrazují statickým zvýrazněním.
+
+`node js/visual-themes.test.cjs` ověřuje zadané palety a 49 kombinací barev textu/ovládání vůči prahům WCAG AA (4,5:1 pro běžný text, 3:1 pro ovládací ohraničení/focus). Jde o kontrolu určených barevných kombinací, nikoli úplný audit celé stránky ve vykresleném prohlížeči. Testy komponent na skutečných datech používají DOM adaptér. Přímé vizuální ověření místního file:// náhledu je v této relaci blokované pravidly nástroje pro prohlížeč.
+
+Při příštím publikování musí balíček obsahovat všechny CSS soubory včetně `css/calm-theme.css`. Samostatné `Spustit_spojovac.html` je obsahuje vložené.
