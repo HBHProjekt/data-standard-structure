@@ -1,27 +1,46 @@
-# HBH – prohlížení, úpravy a spojování datových standardů
+# HBH Standard Control
 
-Připravená verze pro publikování, 24. 11. 2026, revize 2. Aplikace pracuje s JSON a IDS přímo v prohlížeči.
+Kompletní verze pro publikování z 25. 11. 2026. Obsahuje všechny předchozí funkce editoru i nové vizuální motivy.
 
-## Nahrání do stávajícího repozitáře
+## Jak aktualizovat stávající web
 
-1. Rozbalte ZIP. Nahrávají se rozbalené soubory, nikoli archiv.
-2. Obsah této složky vložte do stejného místa v repozitáři, kde byl původní `index.html`. Pokud byl v kořeni repozitáře, patří tam přímo nový `index.html`, `js/`, `css/`, `structure/` a `assets/`. Nevytvářejte nad nimi další složku `vystup-github-2026-11-24-v2` ani `data-standard-structure-main`.
-3. Nahraďte původní soubory a přidejte všechny nové soubory, zejména nové skripty a logo v `assets/`. Ponechte ostatní soubory repozitáře a stávající konfiguraci publikování (`.github/`, případně `CNAME` apod.).
-4. Uložte změny do větve, ze které se web publikuje. V GitHub webovém rozhraní použijte Add file → Upload files a nahrajte soubory i složky při zachování struktury.
-5. Nechte proběhnout dosavadní publikování webu. Tento balíček neobsahuje konfiguraci původního nasazování, protože nebyla součástí dodaných podkladů.
-6. Po publikování obnovte stránku pomocí Ctrl+F5. Ověřte logo, načtení JSON/IDS a nové volby v záložkách standardu.
+1. ZIP rozbalte. Nahrává se celý rozbalený obsah, nikoli archiv ani jeho nadřazená složka.
+2. V repozitáři otevřete místo s původním `index.html` a zvolte Add file → Upload files.
+3. Přetáhněte najednou `index.html`, `README.md` a složky `js`, `css`, `assets`, `structure`. Zachovejte jejich strukturu. V seznamu mají být cesty například `css/calm-theme.css`, `js/ui-themes.js` a `assets/hbh-logo-white.png`.
+4. Potvrďte Commit changes do větve, ze které se publikuje. Původní soubory se aktualizují, nové se přidají. Zachovejte stávající konfiguraci repozitáře a publikování, včetně případných `.github` a `CNAME`.
+5. Počkejte na dokončení dosavadního publikování v Actions a obnovte web přes Ctrl+F5.
 
-Samotná aplikace nevyžaduje npm, kompilaci ani build. Je určena pro statické publikování; vstupním souborem je `index.html`. Jestliže repozitář používá vlastní publikační workflow, jeho kroky zůstávají podle dosavadního nastavení.
+Aplikace je statická a sama nevyžaduje npm ani kompilaci. Publikování GitHub Pages proběhne podle dosavadního nastavení repozitáře; konfigurace publikování není součástí tohoto balíčku. Je potřeba přístup k `code.jquery.com` pro načtení jQuery.
 
-## Obsah
+## Novinky v tomto balíčku
+
+- **SAI:** růžovo-tyrkysový plakátový motiv.
+- **HEAVY:** kultivovaný antracitový motiv s červenými akcenty, přehlednějšími tabulkami, formuláři a stavovými barvami. Po načtení dat lze sbalit hlavní banner.
+- **KLID:** samostatný světlý motiv s teplým pozadím, modrými akcenty, bannerem MÉNĚ ŠUMU. VÍCE SOUVISLOSTÍ. a jemnou geometrií vazeb.
+- Žluté akcenty HEAVY při najetí na akční tlačítka, ve focusu polí, odkazech a rozbalovacích šipkách. Chyby a zakázané prvky si zachovávají vlastní rozlišení.
+- Originální bílé logo HBH pro HEAVY; v SAI a KLID zůstává barevná varianta. Obě varianty mají průhledné okolí.
+- Přehledné kapitálkové nadpisy sekcí a dialogů s většími rozestupy v SAI a HEAVY.
+- Přepínač SAI / HEAVY / KLID pamatuje volbu v místním úložišti prohlížeče. Změna vzhledu nijak nemění data ani párování.
+- Skrytý UI easter egg: třikrát rychle klikněte na logo HBH.
+
+Zahrnuté jsou také dřívější úpravy párování objektů a vlastností, import JSON/IDS, editace definic, 85 HBHBIM automatů a doplňování `nameHBH` z IFC názvu, správa a odstranění číselníků, tvorba/import skupin, přiřazování skupin k objektům i odebrání uživatelsky přidaných vlastností s ochranou zdrojových vazeb.
+
+## Struktura pro kořen repozitáře
 
 ```text
 index.html
+README.md
 assets/
   hbh-logo.png
+  hbh-logo-transparent.png
+  hbh-logo-white.png
 css/
   styles.css
+  icy-theme.css
+  heavy-theme.css
+  calm-theme.css
 js/
+  ui-themes.js
   app.js
   dss-model.js
   dss-validation.js
@@ -34,40 +53,8 @@ js/
   standard-viewer.js
 structure/
   structure.json
-README.md
 ```
 
-Do publikované aplikace jsou zahrnuté úpravy párování objektů a vlastností, import IDS, přehledy a editace standardu, knihovna HBHBIM automatů s českými popisy, správa číselníků, tvorba a import skupin vlastností a přiřazování skupin k objektům. Logo je přiložené jako PNG. Pro načtení jQuery z `code.jquery.com` je potřeba internet.
+Všechny uvedené soubory jsou potřeba k zachování celé aplikace. Nahrajte celý balíček; samotný nový `index.html` nestačí. Testovací data, zdrojové C# a WMF podklady, testy a lokální spouštěče nejsou pro publikování potřebné a v archivu nejsou.
 
-Testovací datové standardy, zdrojový C# soubor PropertyWizard, lokální spouštěče a testovací skripty nejsou k publikování potřebné a v tomto balíčku nejsou zahrnuté. Katalog automatů je již obsažený v `js/hbh-automations.js`.
-
-## Poslední úpravy oproti balíčku z 6. 11. 2026
-
-- Hlavička s logem zůstává viditelná; pracovní plocha se posouvá pod ní.
-- Ve druhém řádku hlavičky jsou tlačítka Spojit JSONy a Stáhnout výsledek, synchronizovaná s původními akcemi.
-- Při načtení standardu se prázdné nameHBH doplní z nameIfc / nameIFC, pokud přesně odpovídá anglickému kódu v katalogu PropertyWizardu. Vyplněné nameHBH / NameHBH má vždy přednost, včetně vlastních příkazů.
-- Doplněné přiřazení je uložené do pole nameHBH ve stahovaném JSONu. Pravidlo funguje také při importu skupin z dalšího souboru.
-
-Nahrajte celý obsah tohoto balíčku. Kvůli posledním úpravám se měnily HTML, CSS i JavaScript; nestačí nahrát jen index.html. Stávající soubory balíček nahrazuje, proto není nutné mazat repozitář nebo měnit nastavení GitHub Pages.
-## Revize 2 – odstranění číselníků
-
-V záložce Číselníky hodnot je nové tlačítko Odstranit číselník. Dialog před potvrzením ukáže vlastnosti používající číselník. Odstraněním se vymaže definice z CustomEnums a zruší odpovídající odkazy customEnum ve vlastnostech; vlastnosti i jejich výchozí hodnoty se zachovají. Zrušení dialogu nic nemění. Změna je součástí stahovaného JSONu.
-
-Tento balíček zahrnuje i všechny úpravy předchozí revize z 23. 11. 2026. Nahrajte celý rozbalený obsah stejně jako minule.
-## Aktualizace 24. 11. 2026
-
-- QuantityVolume (Objem) doplněný podle HBHBIMClassification.cs, včetně českého názvu, hintu a rozpoznání z nameIfc / nameIFC. Katalog nyní obsahuje 85 identifikátorů automatů.
-- Přidávání nových vlastností do existujících skupin a přiřazování již definovaných vlastností standardu. U stejnojmenných variant se vybírá konkrétní skupina podle GUID. Existující GUID skupiny a vazby objektů se zachovávají.
-- Editace definice vlastnosti: český název, IFC název, datový typ, IFC typ, jednotka a popis. Sdílená definice se upraví ve všech používajících skupinách a objektech. Automat, číselník a defaulty se zachovávají; změna typu sama nepřevádí jejich hodnoty.
-- Zahrnuje také předchozí odstranění číselníků, stálou hlavičku a doplňování nameHBH z nameIfc.
-
-Nahrajte celý rozbalený obsah tohoto balíčku do kořene stávajícího repozitáře. Zdrojové C# soubory nejsou ke spuštění webu potřebné; katalog a popisy jsou přímo v JavaScriptu.
-## Revize 2 – odebrání přidaných vlastností ze skupin
-
-- Ve skupinovém pohledu lze přes Odebrat ze skupiny odstranit uživatelsky přidaná přiřazení vlastností.
-- Původní vazby ze zdrojového standardu jsou chráněné. Odebírá se pouze vazba v konkrétní skupině; definice vlastnosti a použití v ostatních skupinách zůstávají zachované.
-- Dialog rozlišuje stejnojmenné varianty skupin podle GUID. Změna sdílené skupiny platí pro všechny objekty, které ji používají.
-- Původ přidaných vazeb je uložený v hbhEditor.addedGroupProperties a zachovává se po stažení a novém načtení JSONu.
-- Starší soubory bez záznamu původu mají všechna dosavadní přiřazení chráněná. Zpětně nelze spolehlivě rozlišit původní a dodatečně přidané vazby.
-
-Balíček obsahuje i všechny předchozí funkce včetně editace vlastností, QuantityVolume a odstranění číselníků. Nahrajte celý rozbalený obsah do stejného místa v repozitáři jako minule.
+Kontrola před zabalením zahrnuje syntaxi JavaScriptu, přepínání/ukládání motivů, sbalování banneru a 54 zvolených kombinací kontrastu barev dle prahů WCAG AA. Nejde o úplný vizuální audit stránky v prohlížeči. Po publikování doporučujeme ověřit načtení vlastního standardu, všechny tři režimy a stažení upraveného JSONu.

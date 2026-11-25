@@ -6,10 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>DSS</title>
     <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <link rel="stylesheet" type="text/css" href="css/icy-theme.css">
+    <link rel="stylesheet" type="text/css" href="css/heavy-theme.css">
+    <link rel="stylesheet" type="text/css" href="css/calm-theme.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
-<body>
+<body class="icy-mode">
     <div id="overlay">
         <div class="spinner"></div>
         <div class="progress-bar">
@@ -17,8 +20,19 @@
         </div>
     </div>
     <header class="app-header">
-        <img class="app-logo" src="assets/hbh-logo.png" alt="HBH projekt" width="240" height="86">
-        <h1>Data standard structure viewer and editor</h1>
+        <div class="brand-lockup">
+            <button id="brand-signal" class="brand-trigger" type="button" aria-label="HBH projekt"><img class="app-logo app-logo-colour" src="assets/hbh-logo-transparent.png" alt="HBH projekt" width="240" height="86"><img class="app-logo app-logo-inverse" src="assets/hbh-logo-white.png" alt="" aria-hidden="true" width="240" height="85"></button>
+            <span class="brand-caption">PROJEKTUJEME. PROPOJUJEME.</span>
+        </div>
+        <div class="app-heading"><span class="edition-label">HBH / DATA STANDARD DEPARTMENT</span><h1>STANDARD CONTROL</h1><span class="edition-subtitle">Prohlížení · úpravy · spojování standardů</span></div>
+        <div class="theme-picker" role="group" aria-label="Vizuální režim">
+            <span class="theme-picker-label">VYBER FREKVENCI</span>
+            <div class="theme-picker-buttons">
+                <button class="theme-switch" data-theme="icy" type="button" aria-pressed="true">SAI ✦</button>
+                <button class="theme-switch" data-theme="heavy" type="button" aria-pressed="false">HEAVY ⊘</button>
+                <button class="theme-switch" data-theme="calm" type="button" aria-pressed="false">KLID ◇</button>
+            </div>
+        </div>
         <div class="app-header-actions" role="group" aria-label="Spojení standardů a stažení výsledku">
             <button id="header-merge-json" type="button" class="disabled" disabled>Spojit JSONy</button>
             <button id="header-download-merge" type="button" class="disabled" disabled>Stáhnout výsledek</button>
@@ -26,6 +40,34 @@
     </header>
 
     <main id="app-content" class="app-content" aria-label="Pracovní plocha standardů" tabindex="0">
+        <section id="standard-manifesto" class="icy-manifesto" aria-label="Standard Control – úvod">
+            <div class="icy-manifesto-copy">
+                <p class="icy-kicker">OFICIÁLNĚ NEOBYČEJNÝ DATOVÝ STANDARD / HBH</p>
+                <button id="banner-compact" class="banner-toggle" type="button" aria-expanded="true" aria-controls="standard-manifesto" hidden>Sbalit banner</button>
+                <h2 class="theme-sai">DOBRÁ DATA.<br><span>DOBRÝ DEN.</span></h2>
+                <h2 class="theme-heavy">HEAVY.<br><span>DIRTY DATA.</span></h2>
+                <h2 class="theme-calm">MÉNĚ ŠUMU.<br><span>VÍCE SOUVISLOSTÍ.</span></h2>
+                <p class="icy-intro theme-sai">Přiřaď. Uprav. Sjednoť. Tvůj standard má dneska velké plány.</p>
+                <p class="icy-intro theme-heavy">Přiřaď. Uprav. Sjednoť. Drž data pod kontrolou.</p>
+                <p class="icy-intro theme-calm">Přiřaď. Uprav. Sjednoť. Každá vazba má svůj význam.</p>
+            </div>
+            <div class="icy-poster" aria-hidden="true">
+                <span class="icy-poster-serial">DSS / SIGNAL 001</span>
+                <span class="icy-sun">✦</span>
+                <svg class="calm-network theme-calm" viewBox="0 0 320 180" fill="none" aria-hidden="true" focusable="false">
+                    <path class="calm-network-guide" d="M24 42H296M24 90H296M24 138H296M72 18V162M160 18V162M248 18V162"/>
+                    <path class="calm-network-line" d="M24 112L72 70L116 99L160 45L204 82L248 60L296 96M24 138L72 115L116 129L160 92L204 120L248 102L296 126"/>
+                    <path class="calm-network-line" d="M72 70L72 115M160 45L160 92M248 60L248 102"/>
+                    <g class="calm-network-point"><circle cx="24" cy="112" r="4"/><circle cx="72" cy="70" r="5"/><circle cx="116" cy="99" r="4"/><circle cx="160" cy="45" r="5"/><circle cx="204" cy="82" r="4"/><circle cx="248" cy="60" r="5"/><circle cx="296" cy="96" r="4"/></g>
+                    <circle class="calm-network-accent" cx="160" cy="45" r="5"/>
+                </svg>
+                <span class="icy-poster-motto theme-sai">DŮVĚŘUJ.<br>ALE PÁRUJ.</span>
+                <span class="icy-poster-motto theme-heavy">DRŽ SMĚR.<br>SPOJ VAZBY.</span>
+                <span class="icy-poster-motto theme-calm">KAŽDÁ VAZBA<br>MÁ SMYSL.</span>
+                <span class="icy-poster-stamp">JSON ↔ IDS</span>
+            </div>
+            <div class="icy-strip" aria-hidden="true"><span>VŠECHNY VAZBY NA SVÉM MÍSTĚ</span><b>✦</b><span>VLASTNOSTI / ČÍSELNÍKY / AUTOMATY</span><b>✦</b><span>STANDARD CONTROL</span></div>
+        </section>
 <div class="matching-imports">
                 <div class="container-dropZone">
                     <div class="drop-zone" id="drop-zone1">
@@ -127,6 +169,7 @@
 
     </main>
 
+    <script src="js/ui-themes.js"></script>
     <script src="js/dss-model.js"></script>
     <script src="js/standard-documents.js"></script>
     <script src="js/dss-validation.js"></script>
